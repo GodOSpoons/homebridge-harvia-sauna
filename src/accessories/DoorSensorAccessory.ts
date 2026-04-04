@@ -1,10 +1,10 @@
 import { HarviaDevice, DeviceStateSubscriber } from '../HarviaDevice';
-import { PlatformAccessory, Logger, API } from 'homebridge';
-import type { Service, Characteristic } from 'homebridge';
+import { PlatformAccessory, Logger, API, HAP } from 'homebridge';
+import type { Service } from 'homebridge';
 
 export class DoorSensorAccessory implements DeviceStateSubscriber {
   private readonly service: Service;
-  private readonly Characteristic: typeof Characteristic;
+  private readonly Characteristic: HAP['Characteristic'];
 
   constructor(
     private readonly log: Logger,
@@ -17,7 +17,6 @@ export class DoorSensorAccessory implements DeviceStateSubscriber {
     this.service =
       accessory.getService(Service.ContactSensor) ||
       accessory.addService(Service.ContactSensor, `${device.name} Door`);
-
     this.service
       .getCharacteristic(Characteristic.ContactSensorState)
       .onGet(() =>
@@ -25,7 +24,6 @@ export class DoorSensorAccessory implements DeviceStateSubscriber {
           ? Characteristic.ContactSensorState.CONTACT_NOT_DETECTED
           : Characteristic.ContactSensorState.CONTACT_DETECTED
       );
-
     this.device.subscribe(this);
   }
 
@@ -33,7 +31,9 @@ export class DoorSensorAccessory implements DeviceStateSubscriber {
     const doorOpen = this.device.isDoorOpen;
     this.service.updateCharacteristic(
       this.Characteristic.ContactSensorState,
-      doorOpen ? this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED : this.Characteristic.ContactSensorState.CONTACT_DETECTED
+      doorOpen
+        ? this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED
+        : this.Characteristic.ContactSensorState.CONTACT_DETECTED
     );
   }
 }
