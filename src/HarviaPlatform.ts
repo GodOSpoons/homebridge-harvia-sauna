@@ -1,11 +1,9 @@
 import {
   API,
-  CharacteristicValue,
   DynamicPlatformPlugin,
   Logger,
   PlatformConfig,
   PlatformAccessory,
-  Service,
 } from 'homebridge';
 import { HarviaAPI } from './api/HarviaAPI';
 import { HarviaDevice } from './HarviaDevice';
@@ -19,16 +17,29 @@ interface DeviceTreeItem {
   name: string;
 }
 
+interface HarviaConfig extends PlatformConfig {
+  username: string;
+  password: string;
+  pollingInterval?: number;
+  enableThermostat?: boolean;
+  enableLight?: boolean;
+  enableFan?: boolean;
+  enableSteamer?: boolean;
+  enableDoorSensor?: boolean;
+}
+
 export class HarviaPlatform implements DynamicPlatformPlugin {
   private readonly apiClient = new HarviaAPI();
   private readonly accessories = new Map<string, PlatformAccessory>();
   private devices = new Map<string, HarviaDevice>();
+  private harviaConfig: HarviaConfig;
 
   constructor(
     public readonly log: Logger,
     public readonly config: PlatformConfig,
     public readonly api: API
   ) {
+    this.harviaConfig = config as HarviaConfig;
     this.api.on('didFinishLaunching', () => {
       void this.didFinishLaunching();
     });
@@ -44,9 +55,9 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
       return;
     }
 
-    const username = String(this.config.username || '');
-    const password = String(this.config.password || '');
-    const pollingInterval = Number(this.config.pollingInterval ?? 60);
+    const username = String(this.harviaConfig.username || '');
+    const password = String(this.harviaConfig.password || '');
+    const pollingInterval = Number(this.harviaConfig.pollingInterval ?? 60);
 
     if (!username || !password) {
       this.log.error('HarviaSauna requires username and password in configuration');
@@ -62,6 +73,8 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
         await this.loadDeviceState(device);
         await this.loadDeviceData(device);
         this.devices.set(device.id, device);
+        // Register AFTER state is loaded so device.name is the
+        // displayName from the API, not the raw UUID
         this.registerPlatformAccessories(device);
       }
 
@@ -125,24 +138,53 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
   }
 
   private registerPlatformAccessories(device: HarviaDevice): void {
-    const suffixes: Array<[string, string, (accessory: PlatformAccessory) => void]> = [
-      ['thermostat', 'Thermostat', (accessory) => new ThermostatAccessory(this.log, device, accessory, this.api)],
-      ['power', 'Power', (accessory) => new SwitchAccessory(this.log, device, accessory, 'power', this.api)],
-      ['light', 'Light', (accessory) => new SwitchAccessory(this.log, device, accessory, 'light', this.api)],
-      ['fan', 'Fan', (accessory) => new SwitchAccessory(this.log, device, accessory, 'fan', this.api)],
-      ['steamer', 'Steamer', (accessory) => new SwitchAccessory(this.log, device, accessory, 'steamer', this.api)],
-      ['door', 'Door', (accessory) => new DoorSensorAccessory(this.log, device, accessory, this.api)],
+    // Use device.name which is now populated from displayName via updateData
+    const displayName = device.name || device.id;
+    const cfg = this.harviaConfig;
+
+    // Default all to true if not specified in config
+    const enableThermostat = cfg.enableThermostat !== false;
+    const enableLight = cfg.enableLight !== false;
+    const enableFan = cfg.enableFan !== false;
+    const enableSteamer = cfg.enableSteamer !== false;
+    const enableDoorSensor = cfg.enableDoorSensor !== false;
+
+    const suffixes: Array<[string, string, boolean, (accessory: PlatformAccessory) => void]> = [
+      ['thermostat', 'Thermostat', enableThermostat,
+        (accessory) => new ThermostatAccessory(this.log, device, accessory, this.api)],
+      ['power', 'Power', true, // Power always enabled — core function
+        (accessory) => new SwitchAccessory(this.log, device, accessory, 'power', this.api)],
+      ['light', 'Light', enableLight,
+        (accessory) => new SwitchAccessory(this.log, device, accessory, 'light', this.api)],
+      ['fan', 'Fan', enableFan,
+        (accessory) => new SwitchAccessory(this.log, device, accessory, 'fan', this.api)],
+      ['steamer', 'Steamer', enableSteamer,
+        (accessory) => new SwitchAccessory(this.log, device, accessory, 'steamer', this.api)],
+      ['door', 'Door Sensor', enableDoorSensor,
+        (accessory) => new DoorSensorAccessory(this.log, device, accessory, this.api)],
     ];
 
-    for (const [suffix, label, initializer] of suffixes) {
+    for (const [suffix, label, enabled, initializer] of suffixes) {
       const uuid = this.api.hap.uuid.generate(`${device.id}-${suffix}`);
-      let accessory = this.accessories.get(uuid);
+      const existing = this.accessories.get(uuid);
 
+      if (!enabled) {
+        // If disabled and previously registered, unregister it
+        if (existing) {
+          this.api.unregisterPlatformAccessories('homebridge-harvia', 'HarviaSauna', [existing]);
+          this.accessories.delete(uuid);
+          this.log.info(`Harvia: unregistered disabled accessory "${label}"`);
+        }
+        continue;
+      }
+
+      let accessory = existing;
       if (!accessory) {
-        accessory = new this.api.platformAccessory(`${device.name} ${label}`, uuid);
+        accessory = new this.api.platformAccessory(`${displayName} ${label}`, uuid);
         accessory.context.deviceId = device.id;
         this.api.registerPlatformAccessories('homebridge-harvia', 'HarviaSauna', [accessory]);
         this.accessories.set(uuid, accessory);
+        this.log.info(`Harvia: registered accessory "${displayName} ${label}"`);
       }
 
       initializer(accessory);
@@ -150,10 +192,18 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
   }
 
   private startWebSockets(): void {
-    const deviceReceiver = new HarviaWebSocket(this.apiClient, 'device', false, this.log, (payload) => this.handleStatePayload(payload));
-    const deviceUserReceiver = new HarviaWebSocket(this.apiClient, 'device', true, this.log, (payload) => this.handleStatePayload(payload));
-    const dataReceiver = new HarviaWebSocket(this.apiClient, 'data', false, this.log, (payload) => this.handleDataPayload(payload));
-    const dataUserReceiver = new HarviaWebSocket(this.apiClient, 'data', true, this.log, (payload) => this.handleDataPayload(payload));
+    const deviceReceiver = new HarviaWebSocket(
+      this.apiClient, 'device', false, this.log,
+      (payload) => this.handleStatePayload(payload));
+    const deviceUserReceiver = new HarviaWebSocket(
+      this.apiClient, 'device', true, this.log,
+      (payload) => this.handleStatePayload(payload));
+    const dataReceiver = new HarviaWebSocket(
+      this.apiClient, 'data', false, this.log,
+      (payload) => this.handleDataPayload(payload));
+    const dataUserReceiver = new HarviaWebSocket(
+      this.apiClient, 'data', true, this.log,
+      (payload) => this.handleDataPayload(payload));
 
     deviceReceiver.connect();
     deviceUserReceiver.connect();
@@ -165,7 +215,9 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
     const event = payload?.onStateUpdated;
     if (!event) return;
 
-    const reported = typeof event.reported === 'string' ? JSON.parse(event.reported) : event.reported;
+    const reported = typeof event.reported === 'string'
+      ? JSON.parse(event.reported)
+      : event.reported;
     if (!reported || !reported.deviceId) return;
 
     const device = this.devices.get(reported.deviceId);
@@ -181,7 +233,9 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
 
     const device = this.devices.get(item.deviceId);
     if (device) {
-      const data = typeof item.data === 'string' ? JSON.parse(item.data) : item.data;
+      const data = typeof item.data === 'string'
+        ? JSON.parse(item.data)
+        : item.data;
       device.updateData(data);
     }
   }

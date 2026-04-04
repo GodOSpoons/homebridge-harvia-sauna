@@ -1,63 +1,116 @@
-# Homebridge-harvia
+# homebridge-harvia
 
 Homebridge plugin for Harvia Sauna (Xenio WiFi) via the MyHarvia cloud API.
 
-## Install
+Ported from the [Home Assistant integration](https://github.com/RubenHarms/ha-harvia-xenio-wifi) by Ruben Harms.
 
-1. Clone or download this repository into your Homebridge plugins folder.
-2. Install dependencies:
+**Tested with:** Harvia Xenio WiFi (CX001WIFI) and Harvia Cilindro PC90XE. Should work with any controller compatible with the MyHarvia app.
 
-   ```bash
-   npm install
-   ```
+---
 
-3. Build the plugin:
+## Requirements
 
-   ```bash
-   npm run build
-   ```
+- Node.js ≥ 18
+- Homebridge ≥ 1.6.0
+- Harvia Xenio WiFi module (CX001WIFI)
+- MyHarvia app account
 
-4. Restart Homebridge and add the platform using the Homebridge UI.
+---
+
+## Installation
+
+### Via Homebridge UI (recommended)
+1. Go to the **Plugins** tab in Homebridge UI
+2. Search for `homebridge-harvia`
+3. Click **Install**
+
+### Via terminal
+```bash
+sudo npm install -g homebridge-harvia
+```
+
+---
 
 ## Configuration
 
-Example `config.json` entry for Homebridge UI:
-
+Add to your `config.json` under `platforms`, or configure via the Homebridge UI settings form:
 ```json
 {
   "platform": "HarviaSauna",
   "name": "Harvia Sauna",
-  "username": "user@example.com",
-  "password": "your-password",
-  "pollingInterval": 60
+  "username": "your@myharvia.email",
+  "password": "yourpassword",
+  "pollingInterval": 60,
+  "enableThermostat": true,
+  "enableLight": true,
+  "enableFan": true,
+  "enableSteamer": false,
+  "enableDoorSensor": true
 }
 ```
 
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `username` | ✅ | — | MyHarvia app email address |
+| `password` | ✅ | — | MyHarvia app password |
+| `pollingInterval` | ❌ | `60` | Seconds between fallback polls (min 30) |
+| `enableThermostat` | ❌ | `true` | Expose heater as HomeKit HeaterCooler |
+| `enableLight` | ❌ | `true` | Expose light as HomeKit Switch |
+| `enableFan` | ❌ | `true` | Expose fan as HomeKit Switch |
+| `enableSteamer` | ❌ | `false` | Expose steamer as HomeKit Switch |
+| `enableDoorSensor` | ❌ | `false` | Expose door safety circuit as Contact Sensor |
+
+---
+
 ## Exposed Accessories
 
-| Accessory | HomeKit Type |
-| --- | --- |
-| Thermostat | HeaterCooler |
-| Power | Switch |
-| Light | Switch |
-| Fan | Switch |
-| Steamer | Switch |
-| Door Sensor | Contact Sensor |
+| Accessory | HomeKit Type | Enabled by default |
+|---|---|---|
+| Thermostat | HeaterCooler | ✅ |
+| Power | Switch | ✅ Always on |
+| Light | Switch | ✅ |
+| Fan | Switch | ✅ |
+| Steamer | Switch | ❌ |
+| Door Sensor | Contact Sensor | ✅ |
 
-## How it works
+The **Power** switch is always enabled as it is the core function of the plugin.
+All others can be toggled via the Homebridge UI settings or `config.json`.
 
-- Authenticates with MyHarvia using AWS Cognito.
-- Discovers MyHarvia API endpoints at startup rather than hardcoding AppSync URLs.
-- Uses AppSync HTTP requests for queries and mutations.
-- Builds signed AppSync WebSocket URLs for realtime subscriptions.
-- Maintains 4 AppSync websocket subscriptions for device and data events, with polling fallback.
+---
 
-## Known limitations
+## How It Works
 
-- This is an unofficial integration and relies on reverse-engineered MyHarvia APIs.
-- API behavior can change and may break the plugin.
-- Real-time updates depend on AppSync websocket connectivity.
+1. **Endpoint discovery** — fetches AppSync URLs at startup from `prod.myharvia-cloud.net` rather than hardcoding them, so the plugin survives backend changes
+2. **Authentication** — Cognito SRP auth using the same user pool as the MyHarvia mobile app
+3. **Real-time updates** — 4 AppSync WebSocket subscriptions (device state + sensor data × org receiver + user receiver)
+4. **Polling fallback** — HTTP polling every `pollingInterval` seconds if WebSocket drops
+5. **Token refresh** — automatic Cognito token renewal before expiry
+
+---
+
+## Known Limitations
+
+- Uses the **unofficial, undocumented** MyHarvia API — may break if Harvia changes their backend
+- Steamer control is disabled by default — enable only if your heater supports it
+- Temperature is always in °C from the API — HomeKit converts to your region's units automatically
+
+---
+
+## Troubleshooting
+
+**Accessories show "No Response"**
+Check Homebridge logs for authentication or WebSocket errors. Restart Homebridge — the plugin reconnects automatically.
+
+**Wrong device names**
+The plugin uses the display name from your MyHarvia account. If names are showing as UUIDs, check that your sauna has a name set in the MyHarvia app.
+
+**Authentication failed**
+Verify credentials match the MyHarvia app login, not the Harvia website.
+
+---
 
 ## Credits
 
-Reverse-engineering and API insights by Ruben Harms: https://github.com/RubenHarms/ha-harvia-xenio-wifi
+API reverse-engineering by [Ruben Harms](https://github.com/RubenHarms/ha-harvia-xenio-wifi).
+
+This plugin is not affiliated with or endorsed by Harvia.

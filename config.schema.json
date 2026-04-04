@@ -1,24 +1,80 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Harvia Sauna",
-  "type": "object",
-  "properties": {
-    "name": {
-      "type": "string",
-      "default": "Harvia Sauna"
-    },
-    "username": {
-      "type": "string",
-      "format": "email"
-    },
-    "password": {
-      "type": "string"
-    },
-    "pollingInterval": {
-      "type": "integer",
-      "default": 60,
-      "minimum": 30
+  "pluginAlias": "HarviaSauna",
+  "pluginType": "platform",
+  "singular": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "default": "Harvia Sauna"
+      },
+      "username": {
+        "title": "MyHarvia Username (Email)",
+        "type": "string",
+        "format": "email",
+        "required": true
+      },
+      "password": {
+        "title": "MyHarvia Password",
+        "type": "string",
+        "required": true
+      },
+      "pollingInterval": {
+        "title": "Polling Interval (seconds)",
+        "type": "integer",
+        "default": 60,
+        "minimum": 30
+      },
+      "enableThermostat": {
+        "title": "Enable Thermostat",
+        "type": "boolean",
+        "default": true,
+        "description": "Expose sauna heater as a HomeKit HeaterCooler accessory"
+      },
+      "enableLight": {
+        "title": "Enable Light Switch",
+        "type": "boolean",
+        "default": true,
+        "description": "Expose sauna light as a HomeKit Switch"
+      },
+      "enableFan": {
+        "title": "Enable Fan Switch",
+        "type": "boolean",
+        "default": true,
+        "description": "Expose sauna fan as a HomeKit Switch"
+      },
+      "enableSteamer": {
+        "title": "Enable Steamer Switch",
+        "type": "boolean",
+        "default": false,
+        "description": "Expose steamer as a HomeKit Switch — disable if your sauna has no steamer"
+      },
+      "enableDoorSensor": {
+        "title": "Enable Door Sensor",
+        "type": "boolean",
+        "default": true,
+        "description": "Expose sauna door safety circuit as a HomeKit Contact Sensor"
+      }
     }
   },
-  "required": ["username", "password"]
+  "layout": [
+    { "key": "name" },
+    { "key": "username" },
+    { "key": "password", "type": "password" },
+    { "key": "pollingInterval" },
+    {
+      "type": "fieldset",
+      "title": "Accessories",
+      "description": "Choose which accessories to expose in HomeKit",
+      "items": [
+        { "key": "enableThermostat" },
+        { "key": "enableLight" },
+        { "key": "enableFan" },
+        { "key": "enableSteamer" },
+        { "key": "enableDoorSensor" }
+      ]
+    }
+  ]
 }
