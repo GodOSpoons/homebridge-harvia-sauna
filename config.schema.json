@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Harvia Sauna",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "default": "Harvia Sauna"
+    },
+    "username": {
+      "type": "string",
+      "format": "email"
+    },
+    "password": {
+      "type": "string"
+    },
+    "pollingInterval": {
+      "type": "integer",
+      "default": 60,
+      "minimum": 30
+    }
+  },
+  "required": ["username", "password"]
+}
