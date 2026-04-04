@@ -7,10 +7,15 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run build"
   },
   "keywords": ["homebridge-plugin", "harvia", "sauna", "homekit"],
   "engines": { "node": ">=18.0.0", "homebridge": ">=1.6.0" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jos3phburns-afk/Homebridge-harvia.git"
+  },
   "dependencies": {
     "amazon-cognito-identity-js": "^6.3.7",
     "axios": "^1.7.2",
