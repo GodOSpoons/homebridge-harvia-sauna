@@ -1,32 +1,23 @@
-{
-  "name": "homebridge-harvia",
-  "version": "0.1.0",
-  "description": "Homebridge plugin for Harvia Sauna (Xenio WiFi) via MyHarvia API",
-  "license": "MIT",
-  "main": "dist/index.js",
-  "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch",
-    "prepublishOnly": "npm run build"
-  },
-  "keywords": ["homebridge-plugin", "harvia", "sauna", "homekit"],
-  "engines": { "node": ">=18.0.0", "homebridge": ">=1.6.0" },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/jos3phburns-afk/Homebridge-harvia.git"
-  },
-  "dependencies": {
+"dependencies": {
     "amazon-cognito-identity-js": "^6.3.7",
     "axios": "^1.7.2",
     "uuid": "^9.0.0",
-    "ws": "^8.18.0",
-    "typescript": "^5.4.5"
-  },
-  "devDependencies": {
+    "ws": "^8.18.0"
+},
+"devDependencies": {
     "@types/node": "^20.14.0",
     "@types/uuid": "^9.0.0",
     "@types/ws": "^8.5.10",
-    "homebridge": "^1.8.4"
-  },
-  "peerDependencies": { "homebridge": "^1.6.0" }
+    "homebridge": "^1.8.4",
+    "typescript": "^5.4.5"
 }
+```
+
+---
+
+**2. Remove `dist/` from the repo**
+
+Now that you're publishing via npm, `dist/` doesn't belong in GitHub. It's generated code and clutters the repo. Add it back to `.gitignore`:
+```
+node_modules/
+dist/
