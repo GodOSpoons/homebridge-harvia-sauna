@@ -20,14 +20,14 @@
     "amazon-cognito-identity-js": "^6.3.7",
     "axios": "^1.7.2",
     "uuid": "^9.0.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "typescript": "^5.4.5"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
     "@types/uuid": "^9.0.0",
     "@types/ws": "^8.5.10",
-    "homebridge": "^1.8.4",
-    "typescript": "^5.4.5"
+    "homebridge": "^1.8.4"
   },
   "peerDependencies": { "homebridge": "^1.6.0" }
 }
