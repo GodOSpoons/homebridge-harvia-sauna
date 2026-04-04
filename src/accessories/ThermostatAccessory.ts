@@ -1,10 +1,10 @@
 import { HarviaDevice, DeviceStateSubscriber } from '../HarviaDevice';
-import { PlatformAccessory, Logger, CharacteristicValue, API } from 'homebridge';
-import type { Service, Characteristic } from 'homebridge';
+import { PlatformAccessory, Logger, CharacteristicValue, API, HAP } from 'homebridge';
+import type { Service } from 'homebridge';
 
 export class ThermostatAccessory implements DeviceStateSubscriber {
   private readonly service: Service;
-  private readonly Characteristic: typeof Characteristic;
+  private readonly Characteristic: HAP['Characteristic'];
 
   constructor(
     private readonly log: Logger,
@@ -14,11 +14,9 @@ export class ThermostatAccessory implements DeviceStateSubscriber {
   ) {
     const { Service, Characteristic } = this.hbApi.hap;
     this.Characteristic = Characteristic;
-
     this.service =
       accessory.getService(Service.HeaterCooler) ||
       accessory.addService(Service.HeaterCooler, `${device.name} Thermostat`);
-
     this.service.setCharacteristic(
       Characteristic.CurrentHeaterCoolerState,
       Characteristic.CurrentHeaterCoolerState.INACTIVE
@@ -27,10 +25,8 @@ export class ThermostatAccessory implements DeviceStateSubscriber {
       Characteristic.TargetHeaterCoolerState,
       Characteristic.TargetHeaterCoolerState.HEAT
     );
-
     const target = this.service.getCharacteristic(Characteristic.TargetHeaterCoolerState);
     target.setProps({ validValues: [Characteristic.TargetHeaterCoolerState.HEAT] });
-
     this.service
       .getCharacteristic(Characteristic.Active)
       .onGet(() => (this.device.active
@@ -39,11 +35,9 @@ export class ThermostatAccessory implements DeviceStateSubscriber {
       .onSet(async (value: CharacteristicValue) => {
         await this.device.setActive(value === Characteristic.Active.ACTIVE);
       });
-
     this.service
       .getCharacteristic(Characteristic.CurrentTemperature)
       .onGet(() => this.device.currentTemp);
-
     this.service
       .getCharacteristic(Characteristic.HeatingThresholdTemperature)
       .setProps({ minValue: 40, maxValue: 110, minStep: 1 })
@@ -51,7 +45,6 @@ export class ThermostatAccessory implements DeviceStateSubscriber {
       .onSet(async (value: CharacteristicValue) => {
         await this.device.setTargetTemperature(Number(value));
       });
-
     this.device.subscribe(this);
   }
 
