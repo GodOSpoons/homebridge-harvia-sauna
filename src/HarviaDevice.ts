@@ -4,7 +4,13 @@ export interface DeviceStateSubscriber {
   onDeviceUpdate(device: HarviaDevice): void;
 }
 
+// 'sensor' identifies a satellite device like the SAM001W: no heater
+// controls, just temperature/humidity telemetry. Set once at discovery
+// time by HarviaPlatform (see normalize.isHeaterStatePayload).
+export type DeviceKind = 'heater' | 'sensor';
+
 export class HarviaDevice {
+  public kind: DeviceKind = 'heater';
   public active = false;
   public heatOn = false;
   public lightsOn = false;

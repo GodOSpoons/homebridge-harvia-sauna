@@ -6,12 +6,13 @@ import {
   PlatformAccessory,
 } from 'homebridge';
 import { HarviaAPI } from './api/HarviaAPI';
-import { normalizeStatePayload, normalizeTelemetryPayload } from './api/normalize';
+import { isHeaterStatePayload, normalizeStatePayload, normalizeTelemetryPayload } from './api/normalize';
 import { HarviaDevice } from './HarviaDevice';
 import { HarviaWebSocket } from './HarviaWebSocket';
 import { ThermostatAccessory } from './accessories/ThermostatAccessory';
 import { SwitchAccessory, SwitchType } from './accessories/SwitchAccessory';
 import { DoorSensorAccessory } from './accessories/DoorSensorAccessory';
+import { SensorAccessory } from './accessories/SensorAccessory';
 
 interface HarviaConfig extends PlatformConfig {
   username: string;
@@ -67,8 +68,31 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
 
       for (const entry of deviceList) {
         const device = new HarviaDevice(this.apiClient, entry.deviceId, entry.deviceId);
-        await this.loadDeviceState(device);
-        await this.loadDeviceData(device);
+
+        // /devices/state is cabin-scoped (subId: "C1") and may not apply to
+        // a satellite sensor device like the SAM001W, which has no cabin.
+        // A failure here shouldn't drop the device — fall back to an empty
+        // state, which classifies it as 'sensor' (see isHeaterStatePayload)
+        // and let telemetry below carry its actual temperature/humidity.
+        let normalizedState: Record<string, unknown> = { deviceId: device.id };
+        try {
+          const stateRaw = await this.apiClient.getDeviceState(device.id);
+          this.log.debug(`Harvia: raw device state for ${device.id}: ${JSON.stringify(stateRaw)}`);
+          normalizedState = normalizeStatePayload(device.id, stateRaw);
+        } catch (error: any) {
+          this.log.debug(
+            `Harvia: device state unavailable for ${device.id}, treating as sensor-only: ${error?.message ?? error}`
+          );
+        }
+        device.kind = isHeaterStatePayload(normalizedState) ? 'heater' : 'sensor';
+        device.updateData(normalizedState);
+
+        try {
+          await this.loadDeviceData(device);
+        } catch (error: any) {
+          this.log.warn(`Harvia: failed to load telemetry for ${device.id}: ${error?.message ?? error}`);
+        }
+
         this.devices.set(device.id, device);
         // Register AFTER state is loaded so device.name is the
         // displayName from the API, not the raw device ID
@@ -83,6 +107,10 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
   }
 
   private async loadDeviceState(device: HarviaDevice): Promise<void> {
+    // Cabin-scoped state doesn't apply to satellite sensor devices; skip it
+    // once classified, to avoid repeated polling failures against an
+    // endpoint that already didn't work for this device at startup.
+    if (device.kind === 'sensor') return;
     const raw = await this.apiClient.getDeviceState(device.id);
     this.log.debug(`Harvia: raw device state for ${device.id}: ${JSON.stringify(raw)}`);
     device.updateData(normalizeStatePayload(device.id, raw));
@@ -95,6 +123,11 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
   }
 
   private registerPlatformAccessories(device: HarviaDevice): void {
+    if (device.kind === 'sensor') {
+      this.registerSensorAccessories(device);
+      return;
+    }
+
     // Use device.name which is now populated from displayName via updateData
     const displayName = device.name || device.id;
     const cfg = this.harviaConfig;
@@ -144,6 +177,28 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
         this.log.info(`Harvia: registered accessory "${displayName} ${label}"`);
       }
 
+      initializer(accessory);
+    }
+  }
+
+  private registerSensorAccessories(device: HarviaDevice): void {
+    const displayName = device.name || device.id;
+
+    const suffixes: Array<[string, string, (accessory: PlatformAccessory) => void]> = [
+      ['temp', 'Temperature', (accessory) => new SensorAccessory(this.log, device, accessory, 'temperature', this.api)],
+      ['humidity', 'Humidity', (accessory) => new SensorAccessory(this.log, device, accessory, 'humidity', this.api)],
+    ];
+
+    for (const [suffix, label, initializer] of suffixes) {
+      const uuid = this.api.hap.uuid.generate(`${device.id}-${suffix}`);
+      let accessory = this.accessories.get(uuid);
+      if (!accessory) {
+        accessory = new this.api.platformAccessory(`${displayName} ${label}`, uuid);
+        accessory.context.deviceId = device.id;
+        this.api.registerPlatformAccessories('homebridge-harvia', 'HarviaSauna', [accessory]);
+        this.accessories.set(uuid, accessory);
+        this.log.info(`Harvia: registered accessory "${displayName} ${label}"`);
+      }
       initializer(accessory);
     }
   }

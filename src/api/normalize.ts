@@ -126,6 +126,21 @@ export function normalizeStatePayload(deviceId: string, raw: Record<string, unkn
   return normalized;
 }
 
+// Distinguishes a heater/cabin device from a satellite sensor-only device
+// (e.g. the SAM001W WiFi temperature/humidity sensor, which pairs to a
+// harvia.io account as its own device with its own deviceId, but reports
+// no heater controls). Harvia doesn't publish a documented device 'type'
+// enum, so this infers heater-ness from the presence of any control field
+// that only a heater/cabin would ever report.
+export function isHeaterStatePayload(normalized: Record<string, unknown>): boolean {
+  return (
+    'active' in normalized ||
+    'saunaStatus' in normalized ||
+    'activeProfile' in normalized ||
+    'targetTemp' in normalized
+  );
+}
+
 export function normalizeTelemetryPayload(payload: Record<string, unknown>): Record<string, unknown> {
   const data =
     payload && typeof payload.data === 'object' && payload.data !== null

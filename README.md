@@ -4,7 +4,7 @@ Homebridge plugin for Harvia **Fenix** sauna control panels via the `harvia.io` 
 
 Field mapping and the door-sensor fallback logic are ported from the [ha-harvia-sauna](https://github.com/WiesiDeluxe/ha-harvia-sauna) Home Assistant integration, which reconciled several real-world Fenix firmware quirks.
 
-**Tested with:** Harvia Fenix WiFi control panel. Should work with any Fenix panel (FX001XW / FX002XW) managed through the MyHarvia 2 app.
+**Tested with:** Harvia Fenix WiFi control panel. Should work with any Fenix panel (FX001XW / FX002XW) managed through the MyHarvia 2 app, and auto-detects an optional paired SAM001W WiFi sensor.
 
 > This plugin targets the **Fenix / harvia.io** backend only. It does not support the older Xenio WiFi controller, which uses a separate MyHarvia (Cognito + AWS AppSync) backend.
 
@@ -80,6 +80,17 @@ All others can be toggled via the Homebridge UI settings or `config.json`.
 
 The Thermostat's `CurrentHeaterCoolerState` distinguishes IDLE (powered on, holding temperature) from HEATING (actively heating) using the panel's real-time `heatOn` telemetry.
 
+### Optional SAM001W sensor
+
+If a Harvia SAM001W WiFi sensor is paired to your MyHarvia 2 account, it's auto-detected as a separate device and exposed as its own pair of accessories — no config needed:
+
+| Accessory | HomeKit Type |
+|---|---|
+| Temperature | Temperature Sensor |
+| Humidity | Humidity Sensor |
+
+The SAM001W pairs to harvia.io as its own device (separate `deviceId` from the sauna's heater), so the plugin classifies each discovered device at startup: one reporting heater-control fields (`active`, `targetTemp`, etc.) becomes the full sauna accessory set above; one reporting only temperature/humidity telemetry becomes a sensor-only device. There's no documented `type` field to key off of, so this is inferred from what each device actually reports — see `src/api/normalize.ts` (`isHeaterStatePayload`) if a device is ever misclassified.
+
 ---
 
 ## How It Works
@@ -98,6 +109,7 @@ The Thermostat's `CurrentHeaterCoolerState` distinguishes IDLE (powered on, hold
 
 - Uses the **unofficial, undocumented** parts of the harvia.io API (device list shape, command payloads) — may break if Harvia changes their backend
 - The Fenix door-sensor field name isn't consistently documented across firmware/hardware generations. The plugin tries several known field names, then a safety-circuit fallback, in that order — see `src/api/normalize.ts` if your door sensor doesn't report correctly and you want to check debug logs for the raw field your unit sends
+- SAM001W detection is heuristic (no documented device-type field exists) — see the Optional SAM001W sensor section above and the Troubleshooting entry below if it's misclassified
 - Steamer control is disabled by default — enable only if your heater supports it (combi models)
 - Temperature is always in °C from the API — HomeKit converts to your region's units automatically
 
@@ -113,6 +125,9 @@ The plugin uses the `displayName` field from your device's state. If names are s
 
 **Door sensor never changes / always shows one state**
 Run Homebridge with `-D` (debug mode) and look for `Harvia: raw device state` / `Harvia: raw latest data` log lines — they show the exact field names your panel reports, which can be pasted into an issue if none of the known door-field candidates match.
+
+**SAM001W sensor doesn't appear, or appears as a full sauna accessory set**
+Run Homebridge with `-D` and check the `Harvia: discovered devices` and `Harvia: raw device state` log lines for the sensor's `deviceId`. If it's missing entirely, its state/telemetry calls may be failing outright (look for `Harvia: failed to load telemetry` / `device state unavailable` warnings for that ID). If it appears but registers as a Thermostat/switches instead of Temperature/Humidity sensors, its state payload contains a field `isHeaterStatePayload` treats as a heater-control field — share the raw state log line so the classification can be corrected.
 
 **Authentication failed**
 Verify credentials match the MyHarvia 2 app login, not the Harvia website.
