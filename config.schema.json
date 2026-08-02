@@ -11,13 +11,13 @@
         "default": "Harvia Sauna"
       },
       "username": {
-        "title": "MyHarvia Username (Email)",
+        "title": "MyHarvia 2 Username (Email)",
         "type": "string",
         "format": "email",
         "required": true
       },
       "password": {
-        "title": "MyHarvia Password",
+        "title": "MyHarvia 2 Password",
         "type": "string",
         "required": true
       },
@@ -55,7 +55,7 @@
         "title": "Enable Door Sensor",
         "type": "boolean",
         "default": true,
-        "description": "Expose sauna door safety circuit as a HomeKit Contact Sensor"
+        "description": "Expose sauna door state as a HomeKit Contact Sensor — requires a Fenix panel with a door sensor (e.g. FX002XW)"
       }
     }
   },

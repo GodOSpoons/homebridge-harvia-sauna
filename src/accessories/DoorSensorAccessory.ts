@@ -20,7 +20,7 @@ export class DoorSensorAccessory implements DeviceStateSubscriber {
     this.service
       .getCharacteristic(Characteristic.ContactSensorState)
       .onGet(() =>
-        this.device.isDoorOpen
+        this.device.doorOpen
           ? Characteristic.ContactSensorState.CONTACT_NOT_DETECTED
           : Characteristic.ContactSensorState.CONTACT_DETECTED
       );
@@ -28,7 +28,7 @@ export class DoorSensorAccessory implements DeviceStateSubscriber {
   }
 
   public onDeviceUpdate(): void {
-    const doorOpen = this.device.isDoorOpen;
+    const doorOpen = Boolean(this.device.doorOpen);
     this.service.updateCharacteristic(
       this.Characteristic.ContactSensorState,
       doorOpen

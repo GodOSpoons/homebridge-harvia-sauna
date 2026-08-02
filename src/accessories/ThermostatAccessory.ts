@@ -61,9 +61,11 @@ export class ThermostatAccessory implements DeviceStateSubscriber {
     );
     this.service.updateCharacteristic(
       this.Characteristic.CurrentHeaterCoolerState,
-      this.device.active
-        ? this.Characteristic.CurrentHeaterCoolerState.HEATING
-        : this.Characteristic.CurrentHeaterCoolerState.INACTIVE
+      !this.device.active
+        ? this.Characteristic.CurrentHeaterCoolerState.INACTIVE
+        : this.device.heatOn
+          ? this.Characteristic.CurrentHeaterCoolerState.HEATING
+          : this.Characteristic.CurrentHeaterCoolerState.IDLE
     );
     this.service.updateCharacteristic(
       this.Characteristic.TargetHeaterCoolerState,

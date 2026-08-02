@@ -6,16 +6,12 @@ import {
   PlatformAccessory,
 } from 'homebridge';
 import { HarviaAPI } from './api/HarviaAPI';
+import { normalizeStatePayload, normalizeTelemetryPayload } from './api/normalize';
 import { HarviaDevice } from './HarviaDevice';
 import { HarviaWebSocket } from './HarviaWebSocket';
 import { ThermostatAccessory } from './accessories/ThermostatAccessory';
 import { SwitchAccessory, SwitchType } from './accessories/SwitchAccessory';
 import { DoorSensorAccessory } from './accessories/DoorSensorAccessory';
-
-interface DeviceTreeItem {
-  id: string;
-  name: string;
-}
 
 interface HarviaConfig extends PlatformConfig {
   username: string;
@@ -66,15 +62,16 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
 
     try {
       await this.apiClient.authenticate(username, password);
-      const devices = await this.loadDeviceTree();
+      const deviceList = await this.apiClient.getDevices();
+      this.log.debug(`Harvia: discovered devices: ${JSON.stringify(deviceList.map((d) => d.deviceId))}`);
 
-      for (const entry of devices) {
-        const device = new HarviaDevice(this.apiClient, entry.id, entry.name);
+      for (const entry of deviceList) {
+        const device = new HarviaDevice(this.apiClient, entry.deviceId, entry.deviceId);
         await this.loadDeviceState(device);
         await this.loadDeviceData(device);
         this.devices.set(device.id, device);
         // Register AFTER state is loaded so device.name is the
-        // displayName from the API, not the raw UUID
+        // displayName from the API, not the raw device ID
         this.registerPlatformAccessories(device);
       }
 
@@ -85,59 +82,16 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
     }
   }
 
-  private async loadDeviceTree(): Promise<DeviceTreeItem[]> {
-    const endpointUrl = this.apiClient.getEndpoint('device');
-    const resp = await this.apiClient.appsyncRequest(endpointUrl, {
-      operationName: 'Query',
-      variables: {},
-      query: `query Query {\n  getDeviceTree\n}\n`,
-    });
-
-    const raw = resp.data?.getDeviceTree;
-    this.log.debug(`Harvia: raw getDeviceTree: ${raw}`);
-    if (!raw) return [];
-
-    const tree = JSON.parse(raw);
-    if (!tree?.[0]?.c) return [];
-
-    return tree[0].c.map((node: { i: { name: string } }) => ({
-      id: node.i.name,
-      name: node.i.name,
-    }));
-  }
-
   private async loadDeviceState(device: HarviaDevice): Promise<void> {
-    const endpointUrl = this.apiClient.getEndpoint('device');
-    const resp = await this.apiClient.appsyncRequest(endpointUrl, {
-      operationName: 'Query',
-      variables: { deviceId: device.id },
-      query: `query Query($deviceId: ID!) {\n  getDeviceState(deviceId: $deviceId) {\n    reported\n  }\n}\n`,
-    });
-
-    const state = resp.data?.getDeviceState?.reported;
-    this.log.debug(`Harvia: raw getDeviceState for ${device.id}: ${JSON.stringify(state)}`);
-    if (typeof state === 'string') {
-      device.updateData(JSON.parse(state));
-    } else if (typeof state === 'object') {
-      device.updateData(state);
-    }
+    const raw = await this.apiClient.getDeviceState(device.id);
+    this.log.debug(`Harvia: raw device state for ${device.id}: ${JSON.stringify(raw)}`);
+    device.updateData(normalizeStatePayload(device.id, raw));
   }
 
   private async loadDeviceData(device: HarviaDevice): Promise<void> {
-    const endpointUrl = this.apiClient.getEndpoint('data');
-    const resp = await this.apiClient.appsyncRequest(endpointUrl, {
-      operationName: 'Query',
-      variables: { deviceId: device.id },
-      query: `query Query($deviceId: ID!) {\n  getLatestData(deviceId: $deviceId) {\n    data\n  }\n}\n`,
-    });
-
-    const payload = resp.data?.getLatestData?.data;
-    this.log.debug(`Harvia: raw getLatestData for ${device.id}: ${JSON.stringify(payload)}`);
-    if (typeof payload === 'string') {
-      device.updateData(JSON.parse(payload));
-    } else if (typeof payload === 'object') {
-      device.updateData(payload);
-    }
+    const raw = await this.apiClient.getLatestDeviceData(device.id);
+    this.log.debug(`Harvia: raw latest data for ${device.id}: ${JSON.stringify(raw)}`);
+    device.updateData(normalizeTelemetryPayload(raw));
   }
 
   private registerPlatformAccessories(device: HarviaDevice): void {
@@ -195,54 +149,51 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
   }
 
   private startWebSockets(): void {
-    const deviceReceiver = new HarviaWebSocket(
-      this.apiClient, 'device', false, this.log,
-      (payload) => this.handleStatePayload(payload));
-    const deviceUserReceiver = new HarviaWebSocket(
-      this.apiClient, 'device', true, this.log,
-      (payload) => this.handleStatePayload(payload));
-    const dataReceiver = new HarviaWebSocket(
-      this.apiClient, 'data', false, this.log,
-      (payload) => this.handleDataPayload(payload));
-    const dataUserReceiver = new HarviaWebSocket(
-      this.apiClient, 'data', true, this.log,
-      (payload) => this.handleDataPayload(payload));
+    for (const device of this.devices.values()) {
+      const stateSocket = new HarviaWebSocket(
+        this.apiClient, 'device', device.id, this.log,
+        (payload) => this.handleStatePayload(payload));
+      const dataSocket = new HarviaWebSocket(
+        this.apiClient, 'data', device.id, this.log,
+        (payload) => this.handleDataPayload(payload));
 
-    deviceReceiver.connect();
-    deviceUserReceiver.connect();
-    dataReceiver.connect();
-    dataUserReceiver.connect();
+      stateSocket.connect();
+      dataSocket.connect();
+    }
   }
 
   private handleStatePayload(payload: any): void {
-    const event = payload?.onStateUpdated;
-    if (!event) return;
+    const item = payload?.devicesStatesUpdateFeed?.item;
+    if (!item) return;
 
-    const reported = typeof event.reported === 'string'
-      ? JSON.parse(event.reported)
-      : event.reported;
-    this.log.debug(`Harvia: raw onStateUpdated: ${JSON.stringify(reported)}`);
-    if (!reported || !reported.deviceId) return;
+    const deviceId = item.deviceId;
+    if (!deviceId) return;
 
-    const device = this.devices.get(reported.deviceId);
+    const reported = typeof item.reported === 'string'
+      ? JSON.parse(item.reported)
+      : item.reported;
+    if (!reported) return;
+
+    this.log.debug(`Harvia: raw devicesStatesUpdateFeed for ${deviceId}: ${JSON.stringify(reported)}`);
+
+    const device = this.devices.get(deviceId);
     if (device) {
-      device.updateData(reported);
+      device.updateData(normalizeStatePayload(deviceId, reported));
     }
   }
 
   private handleDataPayload(payload: any): void {
-    const event = payload?.onDataUpdates;
-    const item = event?.item;
+    const item = payload?.devicesMeasurementsUpdateFeed?.item;
     if (!item || !item.deviceId) return;
 
     const data = typeof item.data === 'string'
       ? JSON.parse(item.data)
       : item.data;
-    this.log.debug(`Harvia: raw onDataUpdates for ${item.deviceId}: ${JSON.stringify(data)}`);
+    this.log.debug(`Harvia: raw devicesMeasurementsUpdateFeed for ${item.deviceId}: ${JSON.stringify(data)}`);
 
     const device = this.devices.get(item.deviceId);
     if (device) {
-      device.updateData(data);
+      device.updateData(normalizeTelemetryPayload({ data, timestamp: item.timestamp, type: item.type }));
     }
   }
 

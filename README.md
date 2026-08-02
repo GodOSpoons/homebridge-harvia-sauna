@@ -1,10 +1,12 @@
 # homebridge-harvia
 
-Homebridge plugin for Harvia Sauna (Xenio WiFi) via the MyHarvia cloud API.
+Homebridge plugin for Harvia **Fenix** sauna control panels via the `harvia.io` (MyHarvia 2) cloud API.
 
-Ported from the [Home Assistant integration](https://github.com/RubenHarms/ha-harvia-xenio-wifi) by Ruben Harms.
+Field mapping and the door-sensor fallback logic are ported from the [ha-harvia-sauna](https://github.com/WiesiDeluxe/ha-harvia-sauna) Home Assistant integration, which reconciled several real-world Fenix firmware quirks.
 
-**Tested with:** Harvia Xenio WiFi (CX001WIFI) and Harvia Cilindro PC90XE. Should work with any controller compatible with the MyHarvia app.
+**Tested with:** Harvia Fenix WiFi control panel. Should work with any Fenix panel (FX001XW / FX002XW) managed through the MyHarvia 2 app.
+
+> This plugin targets the **Fenix / harvia.io** backend only. It does not support the older Xenio WiFi controller, which uses a separate MyHarvia (Cognito + AWS AppSync) backend.
 
 ---
 
@@ -12,8 +14,8 @@ Ported from the [Home Assistant integration](https://github.com/RubenHarms/ha-ha
 
 - Node.js 18.20.4+, 20.18.0+, 22.10.0+, or 24+
 - Homebridge 1.8.0+ or 2.0.0+
-- Harvia Xenio WiFi module (CX001WIFI)
-- MyHarvia app account
+- Harvia Fenix WiFi control panel
+- MyHarvia 2 app account
 
 ---
 
@@ -51,14 +53,14 @@ Add to your `config.json` under `platforms`, or configure via the Homebridge UI 
 
 | Field | Required | Default | Description |
 |---|---|---|---|
-| `username` | ✅ | — | MyHarvia app email address |
-| `password` | ✅ | — | MyHarvia app password |
+| `username` | ✅ | — | MyHarvia 2 app email address |
+| `password` | ✅ | — | MyHarvia 2 app password |
 | `pollingInterval` | ❌ | `60` | Seconds between fallback polls (min 30) |
 | `enableThermostat` | ❌ | `true` | Expose heater as HomeKit HeaterCooler |
 | `enableLight` | ❌ | `true` | Expose light as HomeKit Switch |
 | `enableFan` | ❌ | `true` | Expose fan as HomeKit Switch |
 | `enableSteamer` | ❌ | `false` | Expose steamer as HomeKit Switch |
-| `enableDoorSensor` | ❌ | `false` | Expose door safety circuit as Contact Sensor |
+| `enableDoorSensor` | ❌ | `true` | Expose door state as Contact Sensor |
 
 ---
 
@@ -76,22 +78,27 @@ Add to your `config.json` under `platforms`, or configure via the Homebridge UI 
 The **Power** switch is always enabled as it is the core function of the plugin.
 All others can be toggled via the Homebridge UI settings or `config.json`.
 
+The Thermostat's `CurrentHeaterCoolerState` distinguishes IDLE (powered on, holding temperature) from HEATING (actively heating) using the panel's real-time `heatOn` telemetry.
+
 ---
 
 ## How It Works
 
-1. **Endpoint discovery** — fetches AppSync URLs at startup from `prod.myharvia-cloud.net` rather than hardcoding them, so the plugin survives backend changes
-2. **Authentication** — Cognito SRP auth using the same user pool as the MyHarvia mobile app
-3. **Real-time updates** — 4 AppSync WebSocket subscriptions (device state + sensor data × org receiver + user receiver)
-4. **Polling fallback** — HTTP polling every `pollingInterval` seconds if WebSocket drops
-5. **Token refresh** — automatic Cognito token renewal before expiry
+1. **Endpoint discovery** — fetches REST/GraphQL service URLs from `https://api.harvia.io/endpoints` at startup rather than hardcoding them
+2. **Authentication** — REST bearer-token auth (`/auth/token`, `/auth/refresh`) against the harvia.io API — no Cognito user pool involved
+3. **Reads** — REST (`/devices`, `/devices/state`, `/data/latest-data`)
+4. **Writes** — REST (`/devices/command` for power/light/fan/steamer, `/devices/target` for temperature/humidity)
+5. **Real-time updates** — one GraphQL/WebSocket subscription pair (state + telemetry) per device, keyed by that device's own ID as the subscription receiver
+6. **Polling fallback** — HTTP polling every `pollingInterval` seconds, independent of WebSocket state
+7. **Token refresh** — automatic bearer-token renewal before expiry, with full re-login as a fallback
 
 ---
 
 ## Known Limitations
 
-- Uses the **unofficial, undocumented** MyHarvia API — may break if Harvia changes their backend
-- Steamer control is disabled by default — enable only if your heater supports it
+- Uses the **unofficial, undocumented** parts of the harvia.io API (device list shape, command payloads) — may break if Harvia changes their backend
+- The Fenix door-sensor field name isn't consistently documented across firmware/hardware generations. The plugin tries several known field names, then a safety-circuit fallback, in that order — see `src/api/normalize.ts` if your door sensor doesn't report correctly and you want to check debug logs for the raw field your unit sends
+- Steamer control is disabled by default — enable only if your heater supports it (combi models)
 - Temperature is always in °C from the API — HomeKit converts to your region's units automatically
 
 ---
@@ -102,15 +109,18 @@ All others can be toggled via the Homebridge UI settings or `config.json`.
 Check Homebridge logs for authentication or WebSocket errors. Restart Homebridge — the plugin reconnects automatically.
 
 **Wrong device names**
-The plugin uses the display name from your MyHarvia account. If names are showing as UUIDs, check that your sauna has a name set in the MyHarvia app.
+The plugin uses the `displayName` field from your device's state. If names are showing as raw device IDs, check that your sauna has a name set in the MyHarvia 2 app.
+
+**Door sensor never changes / always shows one state**
+Run Homebridge with `-D` (debug mode) and look for `Harvia: raw device state` / `Harvia: raw latest data` log lines — they show the exact field names your panel reports, which can be pasted into an issue if none of the known door-field candidates match.
 
 **Authentication failed**
-Verify credentials match the MyHarvia app login, not the Harvia website.
+Verify credentials match the MyHarvia 2 app login, not the Harvia website.
 
 ---
 
 ## Credits
 
-API reverse-engineering by [Ruben Harms](https://github.com/RubenHarms/ha-harvia-xenio-wifi).
+Fenix/harvia.io field mapping and door-sensor handling ported from [ha-harvia-sauna](https://github.com/WiesiDeluxe/ha-harvia-sauna).
 
 This plugin is not affiliated with or endorsed by Harvia.

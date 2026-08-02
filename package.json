@@ -1,7 +1,7 @@
 {
   "name": "homebridge-harvia",
-  "version": "0.2.0",
-  "description": "Homebridge plugin for Harvia Sauna (Xenio WiFi) via MyHarvia API",
+  "version": "0.3.0",
+  "description": "Homebridge plugin for Harvia Fenix sauna control panels via the harvia.io cloud API",
   "license": "MIT",
   "main": "dist/index.js",
   "scripts": {
@@ -28,14 +28,11 @@
   },
   "homepage": "https://github.com/jos3phburns-afk/Homebridge-harvia#readme",
   "dependencies": {
-    "amazon-cognito-identity-js": "^6.3.7",
     "axios": "^1.7.2",
-    "uuid": "^9.0.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
-    "@types/uuid": "^9.0.0",
     "@types/ws": "^8.5.10",
     "homebridge": "^2.2.1",
     "typescript": "^5.4.5"

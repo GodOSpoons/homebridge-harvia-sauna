@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
-import { HarviaAPI, EndpointType } from './api/HarviaAPI';
+import { randomUUID } from 'crypto';
+import { GraphQLService, HarviaAPI } from './api/HarviaAPI';
 
 interface GraphQLMessage {
   type: string;
@@ -14,11 +15,12 @@ export class HarviaWebSocket {
   private forcedReconnectTimer: NodeJS.Timeout | null = null;
   private connectionTimeoutMs = 0;
   private attempt = 0;
+  private subscriptionId = randomUUID();
 
   constructor(
     private readonly api: HarviaAPI,
-    private readonly endpointKey: 'device' | 'data',
-    private readonly userReceiver: boolean,
+    private readonly service: GraphQLService,
+    private readonly receiver: string,
     private readonly log: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void },
     private readonly onMessage: (payload: any) => void
   ) {}
@@ -31,12 +33,8 @@ export class HarviaWebSocket {
 
   private async startConnection(): Promise<void> {
     try {
-      const receiver = await this.resolveReceiver();
-      const url = await this.api.getWebSocketUrl(this.endpointKey);
-      const host = this.api.getEndpoint(this.endpointKey as EndpointType).replace(
-        /^https:\/\/(.+)\.appsync-api\.(.+)\/graphql$/,
-        '$1.appsync-api.$2'
-      );
+      const { host } = await this.api.getWebSocketInfo(this.service);
+      const url = await this.api.getWebSocketUrl(this.service);
 
       this.ws = new WebSocket(url, 'graphql-ws');
 
@@ -45,26 +43,21 @@ export class HarviaWebSocket {
         this.sendMessage({ type: 'connection_init', payload: {} });
       });
 
-      this.ws.on('message', (data) => this.handleMessage(data.toString(), receiver, host));
+      this.ws.on('message', (data) => this.handleMessage(data.toString(), host));
 
       this.ws.on('close', () => {
-        this.log.warn('WebSocket closed, scheduling reconnect');
+        this.log.warn(`WebSocket (${this.service}) closed, scheduling reconnect`);
         this.scheduleReconnect();
       });
 
       this.ws.on('error', (error) => {
-        this.log.error(`WebSocket error: ${error.message}`);
+        this.log.error(`WebSocket (${this.service}) error: ${error.message}`);
         this.scheduleReconnect();
       });
     } catch (error: any) {
-      this.log.error(`Failed to start websocket: ${error?.message ?? error}`);
+      this.log.error(`Failed to start websocket (${this.service}): ${error?.message ?? error}`);
       this.scheduleReconnect();
     }
-  }
-
-  private async resolveReceiver(): Promise<string> {
-    const user = await this.api.getUserData();
-    return this.userReceiver ? user.email : user.organizationId;
   }
 
   private sendMessage(message: GraphQLMessage): void {
@@ -72,7 +65,7 @@ export class HarviaWebSocket {
     this.ws.send(JSON.stringify(message));
   }
 
-  private handleMessage(raw: string, receiver: string, host: string): void {
+  private handleMessage(raw: string, host: string): void {
     let message: GraphQLMessage;
     try {
       message = JSON.parse(raw);
@@ -84,7 +77,7 @@ export class HarviaWebSocket {
       case 'connection_ack':
         this.connectionTimeoutMs = Number(message.payload?.connectionTimeoutMs ?? 20000);
         this.resetHeartbeat(this.connectionTimeoutMs + 5000);
-        this.sendStart(receiver, host);
+        this.sendStart(host);
         break;
       case 'ka':
         this.resetHeartbeat(this.connectionTimeoutMs + 5000);
@@ -93,25 +86,26 @@ export class HarviaWebSocket {
         this.onMessage(message.payload?.data);
         break;
       case 'error':
-        this.log.error(`WebSocket error payload: ${JSON.stringify(message.payload)}`);
+        this.log.error(`WebSocket (${this.service}) error payload: ${JSON.stringify(message.payload)}`);
         break;
     }
   }
 
-  private sendStart(receiver: string, host: string): void {
-    const query = this.endpointKey === 'device'
-      ? `subscription onStateUpdated($receiver: String!) {\n  onStateUpdated(receiver: $receiver) {\n    desired\n    reported\n    timestamp\n  }\n}`
-      : `subscription onDataUpdates($receiver: String!) {\n  onDataUpdates(receiver: $receiver) {\n    item {\n      deviceId\n      timestamp\n      data\n    }\n  }\n}`;
+  private sendStart(host: string): void {
+    this.subscriptionId = randomUUID();
+    const query = this.service === 'device'
+      ? 'subscription DeviceStateUpdates($receiver: ID!) {\n  devicesStatesUpdateFeed(receiver: $receiver) {\n    receiver\n    item {\n      deviceId\n      desired\n      reported\n      timestamp\n      connectionState {\n        connected\n        updatedTimestamp\n      }\n    }\n  }\n}'
+      : 'subscription MeasurementsFeed($receiver: ID!) {\n  devicesMeasurementsUpdateFeed(receiver: $receiver) {\n    receiver\n    item {\n      deviceId\n      subId\n      timestamp\n      sessionId\n      type\n      data\n    }\n  }\n}';
 
     this.sendMessage({
-      id: '1',
+      id: this.subscriptionId,
       type: 'start',
       payload: {
-        data: JSON.stringify({ query, variables: { receiver } }),
+        data: JSON.stringify({ query, variables: { receiver: this.receiver } }),
         extensions: {
           authorization: {
             host,
-            Authorization: this.api.getIdToken(),
+            Authorization: `Bearer ${this.api.getIdToken()}`,
           },
         },
       },
@@ -123,7 +117,7 @@ export class HarviaWebSocket {
       clearTimeout(this.heartbeatTimer);
     }
     this.heartbeatTimer = setTimeout(() => {
-      this.log.warn('WebSocket heartbeat timed out, reconnecting');
+      this.log.warn(`WebSocket (${this.service}) heartbeat timed out, reconnecting`);
       this.reconnect();
     }, timeoutMs);
   }
@@ -132,7 +126,7 @@ export class HarviaWebSocket {
     if (this.reconnectTimer) return;
     this.attempt += 1;
     const delay = Math.min(2 ** this.attempt, 60) * 1000;
-    this.log.info(`Reconnecting websocket in ${delay / 1000}s`);
+    this.log.info(`Reconnecting websocket (${this.service}) in ${delay / 1000}s`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.startConnection();
@@ -151,7 +145,7 @@ export class HarviaWebSocket {
       clearTimeout(this.forcedReconnectTimer);
     }
     this.forcedReconnectTimer = setTimeout(() => {
-      this.log.info('Performing forced websocket reconnect');
+      this.log.info(`Performing forced websocket (${this.service}) reconnect`);
       this.reconnect(true);
       this.startForcedReconnect();
     }, 30 * 60 * 1000);

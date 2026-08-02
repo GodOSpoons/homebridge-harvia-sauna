@@ -22,7 +22,7 @@ export class SwitchAccessory implements DeviceStateSubscriber {
     this.service = accessory.getService(Service.Switch) || accessory.addService(Service.Switch, this.displayName);
     accessory.getService(Service.AccessoryInformation)!
       .setCharacteristic(Characteristic.Manufacturer, 'Harvia')
-      .setCharacteristic(Characteristic.Model, 'Xenio WiFi')
+      .setCharacteristic(Characteristic.Model, 'Fenix')
       .setCharacteristic(Characteristic.SerialNumber, `${device.id}-${type}`);
     this.service
       .getCharacteristic(Characteristic.On)
