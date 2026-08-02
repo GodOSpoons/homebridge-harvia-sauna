@@ -10,8 +10,8 @@ Ported from the [Home Assistant integration](https://github.com/RubenHarms/ha-ha
 
 ## Requirements
 
-- Node.js ≥ 18
-- Homebridge ≥ 1.6.0
+- Node.js 18.20.4+, 20.18.0+, 22.10.0+, or 24+
+- Homebridge 1.8.0+ or 2.0.0+
 - Harvia Xenio WiFi module (CX001WIFI)
 - MyHarvia app account
 
