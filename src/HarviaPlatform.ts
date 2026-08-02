@@ -94,6 +94,7 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
     });
 
     const raw = resp.data?.getDeviceTree;
+    this.log.debug(`Harvia: raw getDeviceTree: ${raw}`);
     if (!raw) return [];
 
     const tree = JSON.parse(raw);
@@ -114,6 +115,7 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
     });
 
     const state = resp.data?.getDeviceState?.reported;
+    this.log.debug(`Harvia: raw getDeviceState for ${device.id}: ${JSON.stringify(state)}`);
     if (typeof state === 'string') {
       device.updateData(JSON.parse(state));
     } else if (typeof state === 'object') {
@@ -130,6 +132,7 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
     });
 
     const payload = resp.data?.getLatestData?.data;
+    this.log.debug(`Harvia: raw getLatestData for ${device.id}: ${JSON.stringify(payload)}`);
     if (typeof payload === 'string') {
       device.updateData(JSON.parse(payload));
     } else if (typeof payload === 'object') {
@@ -218,6 +221,7 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
     const reported = typeof event.reported === 'string'
       ? JSON.parse(event.reported)
       : event.reported;
+    this.log.debug(`Harvia: raw onStateUpdated: ${JSON.stringify(reported)}`);
     if (!reported || !reported.deviceId) return;
 
     const device = this.devices.get(reported.deviceId);
@@ -231,11 +235,13 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
     const item = event?.item;
     if (!item || !item.deviceId) return;
 
+    const data = typeof item.data === 'string'
+      ? JSON.parse(item.data)
+      : item.data;
+    this.log.debug(`Harvia: raw onDataUpdates for ${item.deviceId}: ${JSON.stringify(data)}`);
+
     const device = this.devices.get(item.deviceId);
     if (device) {
-      const data = typeof item.data === 'string'
-        ? JSON.parse(item.data)
-        : item.data;
       device.updateData(data);
     }
   }
