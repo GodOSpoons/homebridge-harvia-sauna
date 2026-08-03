@@ -4,11 +4,11 @@ Homebridge plugin for Harvia **Fenix** sauna control panels via the `harvia.io` 
 
 Originally forked from a Homebridge plugin built for the older Xenio WiFi controller, then rewritten from the ground up by [GodOSpoons](https://github.com/GodOSpoons) to target Fenix panels on the harvia.io/MyHarvia 2 backend — a different API entirely (REST bearer-token auth and REST reads/writes, vs. the original's Cognito SRP auth and AppSync GraphQL mutations) — plus Homebridge 2.0 compatibility and auto-detected SAM001W sensor support, validated against real hardware.
 
-Field mapping and the door-sensor fallback logic are ported from the [ha-harvia-sauna](https://github.com/WiesiDeluxe/ha-harvia-sauna) Home Assistant integration, which reconciled several real-world Fenix firmware quirks.
+Field mapping and the door-sensor fallback logic are ported from the [ha-harvia-sauna](https://github.com/WiesiDeluxe/ha-harvia-sauna) Home Assistant integration, which reconciled several real-world Fenix firmware quirks.  Credits where credit is due below.
 
 **Tested with:** Harvia Fenix WiFi control panel. Should work with any Fenix panel (FX001XW / FX002XW) managed through the MyHarvia 2 app, and auto-detects an optional paired SAM001W WiFi sensor.
 
-> This plugin targets the **Fenix / harvia.io** backend only. It does not support the older Xenio WiFi controller, which uses a separate MyHarvia (Cognito + AWS AppSync) backend.
+> This plugin initially targets the **Fenix / harvia.io** backend only. It does not support the older Xenio WiFi controller MyHarvia (Cognito + AWS AppSync) backend.
 
 ---
 
@@ -19,6 +19,8 @@ Field mapping and the door-sensor fallback logic are ported from the [ha-harvia-
 - Harvia Fenix WiFi control panel
 - MyHarvia 2 app account
 - **MyHarvia Control license** for remote control from HomeKit (see below) — monitoring-only works on the free tier
+
+This may work with other Harvia adapters, provided they are supported by the new harvia.io-based API suite.  This may or may not include the legacy Xenio controller.  If it is supported, please let me know, as I do not have two-sauna-household money.
 
 ---
 
@@ -51,17 +53,6 @@ New Harvia products ship with a 3-month free trial of Control; after it expires 
 ```bash
 sudo npm install -g homebridge-harvia-sauna
 ```
-
-### Upgrading from `homebridge-harvia`
-
-This package was renamed from `homebridge-harvia`. The rename isn't a drop-in upgrade — Homebridge tracks each accessory's ownership by the installing package's name, so accessories created under the old package will show up as orphaned once the new one takes over. To migrate cleanly:
-
-1. Uninstall the old `homebridge-harvia` package
-2. Install `homebridge-harvia-sauna`
-3. Restart Homebridge — it will register fresh accessories under the new package name
-4. Remove the now-orphaned old accessories from the Home app (and, if listed, from Homebridge UI's Accessories tab / cached-accessories cleanup)
-
-Your `config.json` platform block doesn't need to change — the `"platform": "HarviaSauna"` value is unaffected by this rename.
 
 ---
 
@@ -178,6 +169,6 @@ Verify credentials match the MyHarvia 2 app login, not the Harvia website.
 
 - Fenix/harvia.io rewrite, Homebridge 2.0 compatibility, and SAM001W support by [GodOSpoons](https://github.com/GodOSpoons)
 - Fenix/harvia.io field mapping and door-sensor handling ported from [ha-harvia-sauna](https://github.com/WiesiDeluxe/ha-harvia-sauna)
-- Originally forked from a Xenio WiFi-based Homebridge plugin, itself ported from Ruben Harms' [Home Assistant integration](https://github.com/RubenHarms/ha-harvia-xenio-wifi)
+- Originally forked from a Xenio WiFi-based Homebridge 1.x [plugin](https://github.com/jos3phburns-afk/Homebridge-harvia) by [jos3phburns-afk](https://github.com/jos3phburns-afk), itself ported from Ruben Harms' [Home Assistant integration](https://github.com/RubenHarms/ha-harvia-xenio-wifi)
 
 This plugin is not affiliated with or endorsed by Harvia.
