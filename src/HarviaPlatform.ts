@@ -63,8 +63,11 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
 
     try {
       await this.apiClient.authenticate(username, password);
+      this.log.info('Harvia: authenticated successfully');
       const deviceList = await this.apiClient.getDevices();
-      this.log.debug(`Harvia: discovered devices: ${JSON.stringify(deviceList.map((d) => d.deviceId))}`);
+      this.log.info(
+        `Harvia: discovered ${deviceList.length} device(s): ${deviceList.map((d) => d.deviceId).join(', ') || 'none'}`
+      );
 
       for (const entry of deviceList) {
         const device = new HarviaDevice(this.apiClient, entry.deviceId, entry.deviceId);
@@ -99,6 +102,7 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
         this.registerPlatformAccessories(device);
       }
 
+      this.log.info(`Harvia: registration complete — ${this.devices.size} device(s) active`);
       this.startWebSockets();
       this.startPolling(pollingInterval);
     } catch (error: any) {
@@ -154,11 +158,15 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
         (accessory) => new DoorSensorAccessory(this.log, device, accessory, this.api)],
     ];
 
+    const active: string[] = [];
+    const disabled: string[] = [];
+
     for (const [suffix, label, enabled, initializer] of suffixes) {
       const uuid = this.api.hap.uuid.generate(`${device.id}-${suffix}`);
       const existing = this.accessories.get(uuid);
 
       if (!enabled) {
+        disabled.push(label);
         // If disabled and previously registered, unregister it
         if (existing) {
           this.api.unregisterPlatformAccessories('homebridge-harvia', 'HarviaSauna', [existing]);
@@ -174,11 +182,17 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
         accessory.context.deviceId = device.id;
         this.api.registerPlatformAccessories('homebridge-harvia', 'HarviaSauna', [accessory]);
         this.accessories.set(uuid, accessory);
-        this.log.info(`Harvia: registered accessory "${displayName} ${label}"`);
+        this.log.debug(`Harvia: registered accessory "${displayName} ${label}"`);
       }
 
       initializer(accessory);
+      active.push(label);
     }
+
+    this.log.info(
+      `Harvia: "${displayName}" (${device.id}) — heater — accessories: ${active.join(', ') || 'none'}` +
+      (disabled.length ? ` (disabled: ${disabled.join(', ')})` : '')
+    );
   }
 
   private registerSensorAccessories(device: HarviaDevice): void {
@@ -189,6 +203,8 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
       ['humidity', 'Humidity', (accessory) => new SensorAccessory(this.log, device, accessory, 'humidity', this.api)],
     ];
 
+    const active: string[] = [];
+
     for (const [suffix, label, initializer] of suffixes) {
       const uuid = this.api.hap.uuid.generate(`${device.id}-${suffix}`);
       let accessory = this.accessories.get(uuid);
@@ -197,10 +213,13 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
         accessory.context.deviceId = device.id;
         this.api.registerPlatformAccessories('homebridge-harvia', 'HarviaSauna', [accessory]);
         this.accessories.set(uuid, accessory);
-        this.log.info(`Harvia: registered accessory "${displayName} ${label}"`);
+        this.log.debug(`Harvia: registered accessory "${displayName} ${label}"`);
       }
       initializer(accessory);
+      active.push(label);
     }
+
+    this.log.info(`Harvia: "${displayName}" (${device.id}) — sensor — accessories: ${active.join(', ') || 'none'}`);
   }
 
   private startWebSockets(): void {
