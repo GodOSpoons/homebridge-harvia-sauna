@@ -55,7 +55,9 @@ export class HarviaDevice {
     if ('active' in data) this.active = Boolean(data.active);
     if ('heatOn' in data) this.heatOn = Boolean(data.heatOn);
     if ('light' in data) this.lightsOn = Boolean(data.light);
+    if ('lightOn' in data) this.lightsOn = Boolean(data.lightOn);
     if ('fan' in data) this.fanOn = Boolean(data.fan);
+    if ('fanOn' in data) this.fanOn = Boolean(data.fanOn);
     if ('steamEn' in data) this.steamOn = Boolean(data.steamEn);
     if ('steamOn' in data) this.steamOn = Boolean(data.steamOn);
     if ('targetTemp' in data) this.targetTemp = Number(data.targetTemp);
