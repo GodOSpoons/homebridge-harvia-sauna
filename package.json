@@ -1,5 +1,5 @@
 {
-  "name": "homebridge-harvia",
+  "name": "homebridge-harvia-sauna",
   "version": "0.3.0",
   "description": "Homebridge plugin for Harvia Fenix sauna control panels via the harvia.io cloud API",
   "license": "MIT",
@@ -22,12 +22,12 @@
   "author": "GodOSpoons",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/GodOSpoons/Homebridge-harvia-alpha.git"
+    "url": "git+https://github.com/GodOSpoons/homebridge-harvia-sauna.git"
   },
   "bugs": {
-    "url": "https://github.com/GodOSpoons/Homebridge-harvia-alpha/issues"
+    "url": "https://github.com/GodOSpoons/homebridge-harvia-sauna/issues"
   },
-  "homepage": "https://github.com/GodOSpoons/Homebridge-harvia-alpha#readme",
+  "homepage": "https://github.com/GodOSpoons/homebridge-harvia-sauna#readme",
   "dependencies": {
     "axios": "^1.7.2",
     "ws": "^8.18.0"

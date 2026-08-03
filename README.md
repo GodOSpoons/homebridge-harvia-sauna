@@ -1,4 +1,4 @@
-# homebridge-harvia
+# Homebridge-Harvia-Sauna
 
 Homebridge plugin for Harvia **Fenix** sauna control panels via the `harvia.io` (MyHarvia 2) cloud API.
 
@@ -44,13 +44,24 @@ New Harvia products ship with a 3-month free trial of Control; after it expires 
 
 ### Via Homebridge UI (recommended)
 1. Go to the **Plugins** tab in Homebridge UI
-2. Search for `homebridge-harvia`
+2. Search for `homebridge-harvia-sauna`
 3. Click **Install**
 
 ### Via terminal
 ```bash
-sudo npm install -g homebridge-harvia
+sudo npm install -g homebridge-harvia-sauna
 ```
+
+### Upgrading from `homebridge-harvia`
+
+This package was renamed from `homebridge-harvia`. The rename isn't a drop-in upgrade — Homebridge tracks each accessory's ownership by the installing package's name, so accessories created under the old package will show up as orphaned once the new one takes over. To migrate cleanly:
+
+1. Uninstall the old `homebridge-harvia` package
+2. Install `homebridge-harvia-sauna`
+3. Restart Homebridge — it will register fresh accessories under the new package name
+4. Remove the now-orphaned old accessories from the Home app (and, if listed, from Homebridge UI's Accessories tab / cached-accessories cleanup)
+
+Your `config.json` platform block doesn't need to change — the `"platform": "HarviaSauna"` value is unaffected by this rename.
 
 ---
 

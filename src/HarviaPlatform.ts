@@ -169,7 +169,7 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
         disabled.push(label);
         // If disabled and previously registered, unregister it
         if (existing) {
-          this.api.unregisterPlatformAccessories('homebridge-harvia', 'HarviaSauna', [existing]);
+          this.api.unregisterPlatformAccessories('homebridge-harvia-sauna', 'HarviaSauna', [existing]);
           this.accessories.delete(uuid);
           this.log.info(`Harvia: unregistered disabled accessory "${label}"`);
         }
@@ -180,7 +180,7 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
       if (!accessory) {
         accessory = new this.api.platformAccessory(`${displayName} ${label}`, uuid);
         accessory.context.deviceId = device.id;
-        this.api.registerPlatformAccessories('homebridge-harvia', 'HarviaSauna', [accessory]);
+        this.api.registerPlatformAccessories('homebridge-harvia-sauna', 'HarviaSauna', [accessory]);
         this.accessories.set(uuid, accessory);
         this.log.debug(`Harvia: registered accessory "${displayName} ${label}"`);
       }
@@ -211,7 +211,7 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
       if (!accessory) {
         accessory = new this.api.platformAccessory(`${displayName} ${label}`, uuid);
         accessory.context.deviceId = device.id;
-        this.api.registerPlatformAccessories('homebridge-harvia', 'HarviaSauna', [accessory]);
+        this.api.registerPlatformAccessories('homebridge-harvia-sauna', 'HarviaSauna', [accessory]);
         this.accessories.set(uuid, accessory);
         this.log.debug(`Harvia: registered accessory "${displayName} ${label}"`);
       }
