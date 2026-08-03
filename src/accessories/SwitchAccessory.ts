@@ -1,6 +1,7 @@
 import { HarviaDevice, DeviceStateSubscriber } from '../HarviaDevice';
 import { PlatformAccessory, Logger, CharacteristicValue, API, HAP } from 'homebridge';
 import type { Service } from 'homebridge';
+import { runHarviaCommand } from './commandError';
 
 export type SwitchType = 'power' | 'light' | 'fan' | 'steamer';
 
@@ -28,7 +29,8 @@ export class SwitchAccessory implements DeviceStateSubscriber {
       .getCharacteristic(Characteristic.On)
       .onGet(() => this.getCurrentState())
       .onSet(async (value: CharacteristicValue) => {
-        await this.setState(value === true || value === 1);
+        await runHarviaCommand(this.log, this.hbApi.hap, `${this.displayName} set`, () =>
+          this.setState(value === true || value === 1));
       });
     this.device.subscribe(this);
   }

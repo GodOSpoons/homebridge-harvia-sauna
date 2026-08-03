@@ -18,6 +18,25 @@ Field mapping and the door-sensor fallback logic are ported from the [ha-harvia-
 - Homebridge 1.8.0+ or 2.0.0+
 - Harvia Fenix WiFi control panel
 - MyHarvia 2 app account
+- **MyHarvia Control license** for remote control from HomeKit (see below) — monitoring-only works on the free tier
+
+---
+
+## MyHarvia Core vs. Control licensing
+
+Harvia gates the MyHarvia 2 ecosystem behind two tiers, and this plugin is subject to the same restriction as the app itself since it authenticates as your regular MyHarvia 2 account:
+
+| | **Core** (free) | **Control** (paid upgrade) |
+|---|---|---|
+| Remote monitoring (status, temperature, notifications, usage history) | ✅ | ✅ |
+| Remote control (power, light, fan, steamer, target temperature) | ❌ | ✅ |
+| Price | Free | $99 / €99 (one-time, lifetime — not a subscription) |
+| Trial | — | 3 months free on new products |
+| Sharing | — | Unlimited invited users share one household's license |
+
+New Harvia products ship with a 3-month free trial of Control; after it expires (or if it was never activated), the account drops back to Core, where only monitoring works. The upgrade is purchased directly in the MyHarvia 2 app, not through this plugin.
+
+**What this means for the plugin:** on a Core-tier account, the Thermostat/Power/Light/Fan/Steamer accessories will correctly *display* current state (this plugin's read path works regardless of tier), but any attempt to *change* state from HomeKit will fail — harvia.io returns `HTTP 402 Payment Required`, which the plugin surfaces as a HomeKit "not authorized" response and a single clean log line rather than a raw error dump (see Troubleshooting below). This isn't a bug — Home app control simply isn't possible until the account has a Control license, the same as in the MyHarvia 2 app itself.
 
 ---
 
@@ -113,6 +132,7 @@ The SAM001W pairs to harvia.io as its own device (separate `deviceId` from the s
 - The Fenix door-sensor field name isn't consistently documented across firmware/hardware generations. The plugin tries several known field names, then a safety-circuit fallback, in that order — see `src/api/normalize.ts` if your door sensor doesn't report correctly and you want to check debug logs for the raw field your unit sends
 - SAM001W detection is heuristic (no documented device-type field exists) — see the Optional SAM001W sensor section above and the Troubleshooting entry below if it's misclassified
 - Steamer control is disabled by default — enable only if your heater supports it (combi models)
+- Remote control requires a MyHarvia **Control** license — see "MyHarvia Core vs. Control licensing" above
 - Temperature is always in °C from the API — HomeKit converts to your region's units automatically
 
 ---
@@ -130,6 +150,13 @@ Run Homebridge with `-D` (debug mode) and look for `Harvia: raw device state` / 
 
 **SAM001W sensor doesn't appear, or appears as a full sauna accessory set**
 Run Homebridge with `-D` and check the `Harvia: discovered devices` and `Harvia: raw device state` log lines for the sensor's `deviceId`. If it's missing entirely, its state/telemetry calls may be failing outright (look for `Harvia: failed to load telemetry` / `device state unavailable` warnings for that ID). If it appears but registers as a Thermostat/switches instead of Temperature/Humidity sensors, its state payload contains a field `isHeaterStatePayload` treats as a heater-control field — share the raw state log line so the classification can be corrected.
+
+**Toggling a switch or the thermostat does nothing / shows "Not Authorized" in the Home app**
+Your MyHarvia 2 account is on the free Core tier, which only allows monitoring. Check the log for a line like:
+```
+Harvia: <accessory> set — Remote control requires the MyHarvia Control license — this account is on the free Core tier, which only allows monitoring. Upgrade in the MyHarvia 2 app.
+```
+This confirms the plugin and your credentials are working correctly — it's an account entitlement, not a bug. Upgrade to Control in the MyHarvia 2 app (or confirm your free trial hasn't expired) to enable remote control. See "MyHarvia Core vs. Control licensing" above.
 
 **Authentication failed**
 Verify credentials match the MyHarvia 2 app login, not the Harvia website.

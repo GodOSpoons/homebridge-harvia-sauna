@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { HarviaAuthError, HarviaConnectionError } from './errors';
+import { HarviaAuthError, HarviaConnectionError, HarviaEntitlementError } from './errors';
 
 const HARVIA_ENDPOINTS_URL = 'https://api.harvia.io/endpoints';
 
@@ -322,6 +322,12 @@ export class HarviaAPI {
     if (response.status === 401 || response.status === 403) {
       this.tokenData = null;
       throw new HarviaAuthError(`HTTP ${response.status}`);
+    }
+    if (response.status === 402) {
+      throw new HarviaEntitlementError(
+        'Remote control requires the MyHarvia Control license — this account is on the free Core tier, ' +
+        'which only allows monitoring. Upgrade in the MyHarvia 2 app.'
+      );
     }
     if (response.status >= 400) {
       throw new HarviaConnectionError(

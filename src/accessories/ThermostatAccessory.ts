@@ -1,6 +1,7 @@
 import { HarviaDevice, DeviceStateSubscriber } from '../HarviaDevice';
 import { PlatformAccessory, Logger, CharacteristicValue, API, HAP } from 'homebridge';
 import type { Service } from 'homebridge';
+import { runHarviaCommand } from './commandError';
 
 export class ThermostatAccessory implements DeviceStateSubscriber {
   private readonly service: Service;
@@ -33,7 +34,8 @@ export class ThermostatAccessory implements DeviceStateSubscriber {
         ? Characteristic.Active.ACTIVE
         : Characteristic.Active.INACTIVE))
       .onSet(async (value: CharacteristicValue) => {
-        await this.device.setActive(value === Characteristic.Active.ACTIVE);
+        await runHarviaCommand(this.log, this.hbApi.hap, `${device.name} power set`, () =>
+          this.device.setActive(value === Characteristic.Active.ACTIVE));
       });
     this.service
       .getCharacteristic(Characteristic.CurrentTemperature)
@@ -43,7 +45,8 @@ export class ThermostatAccessory implements DeviceStateSubscriber {
       .setProps({ minValue: 40, maxValue: 110, minStep: 1 })
       .onGet(() => this.device.targetTemp)
       .onSet(async (value: CharacteristicValue) => {
-        await this.device.setTargetTemperature(Number(value));
+        await runHarviaCommand(this.log, this.hbApi.hap, `${device.name} target temperature set`, () =>
+          this.device.setTargetTemperature(Number(value)));
       });
     this.device.subscribe(this);
   }
