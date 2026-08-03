@@ -19,7 +19,10 @@
     "node": "^18.20.4 || ^20.18.0 || ^22.10.0 || ^24.0.0",
     "homebridge": "^1.8.0 || ^2.0.0"
   },
-  "author": "GodOSpoons",
+  "author": {
+    "name": "GodOSpoons",
+    "url": "https://github.com/GodOSpoons"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/GodOSpoons/homebridge-harvia-sauna.git"

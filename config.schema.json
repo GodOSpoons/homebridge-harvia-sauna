@@ -59,6 +59,7 @@
       }
     }
   },
+  "footerDisplay": "Developed and maintained by [GodOSpoons](https://github.com/GodOSpoons). Issues and contributions welcome on [GitHub](https://github.com/GodOSpoons/homebridge-harvia-sauna).",
   "layout": [
     { "key": "name" },
     { "key": "username" },
