@@ -19,14 +19,15 @@
     "node": "^18.20.4 || ^20.18.0 || ^22.10.0 || ^24.0.0",
     "homebridge": "^1.8.0 || ^2.0.0"
   },
+  "author": "GodOSpoons",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jos3phburns-afk/Homebridge-harvia.git"
+    "url": "git+https://github.com/GodOSpoons/Homebridge-harvia-alpha.git"
   },
   "bugs": {
-    "url": "https://github.com/jos3phburns-afk/Homebridge-harvia/issues"
+    "url": "https://github.com/GodOSpoons/Homebridge-harvia-alpha/issues"
   },
-  "homepage": "https://github.com/jos3phburns-afk/Homebridge-harvia#readme",
+  "homepage": "https://github.com/GodOSpoons/Homebridge-harvia-alpha#readme",
   "dependencies": {
     "axios": "^1.7.2",
     "ws": "^8.18.0"
