@@ -6,7 +6,12 @@ import {
   PlatformAccessory,
 } from 'homebridge';
 import { HarviaAPI } from './api/HarviaAPI';
-import { isHeaterStatePayload, normalizeStatePayload, normalizeTelemetryPayload } from './api/normalize';
+import {
+  extractFallbackDeviceName,
+  isHeaterStatePayload,
+  normalizeStatePayload,
+  normalizeTelemetryPayload,
+} from './api/normalize';
 import { HarviaDevice } from './HarviaDevice';
 import { HarviaWebSocket } from './HarviaWebSocket';
 import { ThermostatAccessory } from './accessories/ThermostatAccessory';
@@ -70,7 +75,9 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
       );
 
       for (const entry of deviceList) {
-        const device = new HarviaDevice(this.apiClient, entry.deviceId, entry.deviceId);
+        this.log.debug(`Harvia: raw device list entry for ${entry.deviceId}: ${JSON.stringify(entry.raw)}`);
+        const fallbackName = extractFallbackDeviceName(entry.deviceId, entry.raw) ?? entry.deviceId;
+        const device = new HarviaDevice(this.apiClient, entry.deviceId, fallbackName);
 
         // /devices/state is cabin-scoped (subId: "C1") and may not apply to
         // a satellite sensor device like the SAM001W, which has no cabin.

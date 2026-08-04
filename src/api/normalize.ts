@@ -141,6 +141,27 @@ export function isHeaterStatePayload(normalized: Record<string, unknown>): boole
   );
 }
 
+// Best-effort display name from a /devices list entry, used as the initial
+// accessory name before (or in place of) a state fetch. Heater devices get
+// their real name from state.displayName once loaded; a cabin-less sensor
+// like the SAM001W may never return that field, so this is what stands in
+// for it. Guards against candidates that just echo the deviceId back (the
+// REST /devices list can use a 'name' field as the identifier itself when
+// no separate deviceId is present — see extractDeviceId in HarviaAPI.ts).
+export function extractFallbackDeviceName(
+  deviceId: string,
+  raw: Record<string, unknown> | undefined
+): string | null {
+  if (!raw) return null;
+  for (const key of ['displayName', 'name', 'deviceName', 'friendlyName', 'label']) {
+    const value = raw[key];
+    if (typeof value === 'string' && value && value !== deviceId) {
+      return value;
+    }
+  }
+  return null;
+}
+
 export function normalizeTelemetryPayload(payload: Record<string, unknown>): Record<string, unknown> {
   const data =
     payload && typeof payload.data === 'object' && payload.data !== null
