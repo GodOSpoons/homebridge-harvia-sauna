@@ -48,6 +48,17 @@ export class ThermostatAccessory implements DeviceStateSubscriber {
         await runHarviaCommand(this.log, this.hbApi.hap, `${device.name} target temperature set`, () =>
           this.device.setTargetTemperature(Number(value)));
       });
+    // RemainingDuration isn't a standard HeaterCooler characteristic (HAP
+    // will log a harmless "not in required or optional section" warning
+    // when it's first added) — it's the closest HomeKit-native fit for a
+    // session countdown, and shows as an extra row in the detail sheet.
+    // The API's remainingTime unit isn't confirmed (sibling fields like
+    // maxOnTime/profile duration are minutes) — passed through raw here;
+    // if the displayed value looks off by 60x, this needs a conversion.
+    this.service
+      .getCharacteristic(Characteristic.RemainingDuration)
+      .setProps({ minValue: 0, maxValue: 7200 })
+      .onGet(() => this.device.remainingTime);
     this.device.subscribe(this);
   }
 
@@ -77,6 +88,10 @@ export class ThermostatAccessory implements DeviceStateSubscriber {
     this.service.updateCharacteristic(
       this.Characteristic.HeatingThresholdTemperature,
       this.device.targetTemp
+    );
+    this.service.updateCharacteristic(
+      this.Characteristic.RemainingDuration,
+      this.device.remainingTime
     );
   }
 }

@@ -94,6 +94,7 @@ Add to your `config.json` under `platforms`, or configure via the Homebridge UI 
 | Accessory | HomeKit Type | Enabled by default |
 |---|---|---|
 | Thermostat | HeaterCooler | ✅ |
+| Panel Temperature | Temperature Sensor | ✅ (tied to Thermostat toggle) |
 | Power | Switch | ✅ Always on |
 | Light | Switch | ✅ |
 | Fan | Switch | ✅ |
@@ -104,6 +105,10 @@ The **Power** switch is always enabled as it is the core function of the plugin.
 All others can be toggled via the Homebridge UI settings or `config.json`.
 
 The Thermostat's `CurrentHeaterCoolerState` distinguishes IDLE (powered on, holding temperature) from HEATING (actively heating) using the panel's real-time `heatOn` telemetry.
+
+The Thermostat also exposes `RemainingDuration` (session time remaining) — it's not a standard `HeaterCooler` characteristic so HAP logs a one-time "not in required or optional section, adding anyway" warning on first use, which is expected. It shows as an extra row in the accessory's detail sheet rather than on the main tile. The API's unit for this value isn't confirmed (sibling fields like `maxOnTime` and profile `duration` are in minutes), so it's currently passed through raw — if it displays as 60x too small/large during an active session, compare it against the MyHarvia 2 app's own countdown and flag it.
+
+**Panel Temperature** is the control panel's own ambient reading (distinct from the sauna air temperature on the Thermostat, and from a paired SAM001W if you have one) — a second real data point for cross-checking.
 
 ### Optional SAM001W sensor
 

@@ -154,6 +154,11 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
     const suffixes: Array<[string, string, boolean, (accessory: PlatformAccessory) => void]> = [
       ['thermostat', 'Thermostat', enableThermostat,
         (accessory) => new ThermostatAccessory(this.log, device, accessory, this.api)],
+      // Grouped with the thermostat toggle — it's supplementary telemetry
+      // about the same physical unit, not an independently controllable
+      // feature, so it doesn't get its own enable flag.
+      ['panelTemp', 'Panel Temperature', enableThermostat,
+        (accessory) => new SensorAccessory(this.log, device, accessory, 'panelTemperature', this.api)],
       ['power', 'Power', true, // Power always enabled — core function
         (accessory) => new SwitchAccessory(this.log, device, accessory, 'power', this.api)],
       ['light', 'Light', enableLight,
