@@ -16,12 +16,21 @@ export class HarviaWebSocket {
   private connectionTimeoutMs = 0;
   private attempt = 0;
   private subscriptionId = randomUUID();
+  // Set right before we deliberately terminate our own connection (the
+  // periodic 30-minute refresh), so the resulting 'close' event can be
+  // logged as routine instead of as an unexpected drop.
+  private expectedClose = false;
 
   constructor(
     private readonly api: HarviaAPI,
     private readonly service: GraphQLService,
     private readonly receiver: string,
-    private readonly log: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void },
+    private readonly log: {
+      debug: (msg: string) => void;
+      info: (msg: string) => void;
+      warn: (msg: string) => void;
+      error: (msg: string) => void;
+    },
     private readonly onMessage: (payload: any) => void
   ) {}
 
@@ -46,12 +55,17 @@ export class HarviaWebSocket {
       this.ws.on('message', (data) => this.handleMessage(data.toString(), host));
 
       this.ws.on('close', () => {
-        this.log.warn(`WebSocket (${this.service}) closed, scheduling reconnect`);
+        if (this.expectedClose) {
+          this.log.debug(`WebSocket (${this.service}) cycling connection (scheduled periodic refresh)`);
+        } else {
+          this.log.warn(`WebSocket (${this.service}) closed unexpectedly — reconnecting automatically`);
+        }
+        this.expectedClose = false;
         this.scheduleReconnect();
       });
 
       this.ws.on('error', (error) => {
-        this.log.error(`WebSocket (${this.service}) error: ${error.message}`);
+        this.log.error(`WebSocket (${this.service}) error: ${error.message} — reconnecting automatically`);
         this.scheduleReconnect();
       });
     } catch (error: any) {
@@ -117,7 +131,7 @@ export class HarviaWebSocket {
       clearTimeout(this.heartbeatTimer);
     }
     this.heartbeatTimer = setTimeout(() => {
-      this.log.warn(`WebSocket (${this.service}) heartbeat timed out, reconnecting`);
+      this.log.warn(`WebSocket (${this.service}) heartbeat timed out — reconnecting automatically`);
       this.reconnect();
     }, timeoutMs);
   }
@@ -126,7 +140,7 @@ export class HarviaWebSocket {
     if (this.reconnectTimer) return;
     this.attempt += 1;
     const delay = Math.min(2 ** this.attempt, 60) * 1000;
-    this.log.info(`Reconnecting websocket (${this.service}) in ${delay / 1000}s`);
+    this.log.debug(`Reconnecting websocket (${this.service}) in ${delay / 1000}s`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.startConnection();
@@ -135,6 +149,7 @@ export class HarviaWebSocket {
 
   private reconnect(force = false): void {
     if (force && this.ws) {
+      this.expectedClose = true;
       this.ws.terminate();
     }
     this.scheduleReconnect();
@@ -145,7 +160,7 @@ export class HarviaWebSocket {
       clearTimeout(this.forcedReconnectTimer);
     }
     this.forcedReconnectTimer = setTimeout(() => {
-      this.log.info(`Performing forced websocket (${this.service}) reconnect`);
+      this.log.debug(`WebSocket (${this.service}) performing scheduled 30-minute reconnect`);
       this.reconnect(true);
       this.startForcedReconnect();
     }, 30 * 60 * 1000);
