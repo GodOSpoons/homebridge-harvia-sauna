@@ -28,6 +28,7 @@ interface HarviaConfig extends PlatformConfig {
   enableFan?: boolean;
   enableSteamer?: boolean;
   enableDoorSensor?: boolean;
+  enableExternalSensor?: boolean;
 }
 
 export class HarviaPlatform implements DynamicPlatformPlugin {
@@ -204,6 +205,7 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
 
   private registerSensorAccessories(device: HarviaDevice): void {
     const displayName = device.name || device.id;
+    const enabled = this.harviaConfig.enableExternalSensor !== false;
 
     const suffixes: Array<[string, string, (accessory: PlatformAccessory) => void]> = [
       ['temp', 'Temperature', (accessory) => new SensorAccessory(this.log, device, accessory, 'temperature', this.api)],
@@ -214,7 +216,18 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
 
     for (const [suffix, label, initializer] of suffixes) {
       const uuid = this.api.hap.uuid.generate(`${device.id}-${suffix}`);
-      let accessory = this.accessories.get(uuid);
+      const existing = this.accessories.get(uuid);
+
+      if (!enabled) {
+        if (existing) {
+          this.api.unregisterPlatformAccessories('homebridge-harvia-sauna', 'HarviaSauna', [existing]);
+          this.accessories.delete(uuid);
+          this.log.info(`Harvia: unregistered disabled accessory "${label}"`);
+        }
+        continue;
+      }
+
+      let accessory = existing;
       if (!accessory) {
         accessory = new this.api.platformAccessory(`${displayName} ${label}`, uuid);
         accessory.context.deviceId = device.id;
@@ -226,7 +239,9 @@ export class HarviaPlatform implements DynamicPlatformPlugin {
       active.push(label);
     }
 
-    this.log.info(`Harvia: "${displayName}" (${device.id}) — sensor — accessories: ${active.join(', ') || 'none'}`);
+    this.log.info(
+      `Harvia: "${displayName}" (${device.id}) — sensor — accessories: ${enabled ? (active.join(', ') || 'none') : 'none (disabled)'}`
+    );
   }
 
   private startWebSockets(): void {

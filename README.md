@@ -70,7 +70,8 @@ Add to your `config.json` under `platforms`, or configure via the Homebridge UI 
   "enableLight": true,
   "enableFan": true,
   "enableSteamer": false,
-  "enableDoorSensor": true
+  "enableDoorSensor": true,
+  "enableExternalSensor": true
 }
 ```
 
@@ -84,6 +85,7 @@ Add to your `config.json` under `platforms`, or configure via the Homebridge UI 
 | `enableFan` | ❌ | `true` | Expose fan as HomeKit Switch |
 | `enableSteamer` | ❌ | `false` | Expose steamer as HomeKit Switch |
 | `enableDoorSensor` | ❌ | `true` | Expose door state as Contact Sensor |
+| `enableExternalSensor` | ❌ | `true` | Expose a paired SAM001W as Temperature/Humidity accessories |
 
 ---
 
@@ -105,7 +107,7 @@ The Thermostat's `CurrentHeaterCoolerState` distinguishes IDLE (powered on, hold
 
 ### Optional SAM001W sensor
 
-If a Harvia SAM001W WiFi sensor is paired to your MyHarvia 2 account, it's auto-detected as a separate device and exposed as its own pair of accessories — no config needed:
+If a Harvia SAM001W WiFi sensor is paired to your MyHarvia 2 account, it's auto-detected as a separate device and exposed as its own pair of accessories (toggle with `enableExternalSensor`, default on):
 
 | Accessory | HomeKit Type |
 |---|---|
@@ -113,6 +115,8 @@ If a Harvia SAM001W WiFi sensor is paired to your MyHarvia 2 account, it's auto-
 | Humidity | Humidity Sensor |
 
 The SAM001W pairs to harvia.io as its own device (separate `deviceId` from the sauna's heater), so the plugin classifies each discovered device at startup: one reporting heater-control fields (`active`, `targetTemp`, etc.) becomes the full sauna accessory set above; one reporting only temperature/humidity telemetry becomes a sensor-only device. There's no documented `type` field to key off of, so this is inferred from what each device actually reports — see `src/api/normalize.ts` (`isHeaterStatePayload`) if a device is ever misclassified.
+
+**Comparing the SAM001W's reading against the sauna's own temperature on the main Home tab:** the Home app automatically groups all Temperature/Humidity sensors in a room into a "Climate" section — this is Apple's own room-view behavior and isn't something a HomeKit accessory can override. To get both readings next to each other at the top level: make sure both accessories are assigned to the same Room, then long-press each tile → accessory settings → **Include in Favorites**. Favorites are a per-user setting stored in your Home data, not something this plugin can set for you.
 
 ---
 

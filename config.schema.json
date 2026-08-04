@@ -56,6 +56,12 @@
         "type": "boolean",
         "default": true,
         "description": "Expose sauna door state as a HomeKit Contact Sensor — requires a Fenix panel with a door sensor (e.g. FX002XW)"
+      },
+      "enableExternalSensor": {
+        "title": "Enable External Sensor",
+        "type": "boolean",
+        "default": true,
+        "description": "Expose a paired satellite sensor (e.g. SAM001W) as Temperature/Humidity accessories — only applies if one is paired to your MyHarvia 2 account"
       }
     }
   },
@@ -74,7 +80,8 @@
         { "key": "enableLight" },
         { "key": "enableFan" },
         { "key": "enableSteamer" },
-        { "key": "enableDoorSensor" }
+        { "key": "enableDoorSensor" },
+        { "key": "enableExternalSensor" }
       ]
     }
   ]
