@@ -110,6 +110,8 @@ The Thermostat also exposes `RemainingDuration` (session time remaining) — it'
 
 **Panel Temperature** is the control panel's own ambient reading (distinct from the sauna air temperature on the Thermostat, and from a paired SAM001W if you have one) — a second real data point for cross-checking.
 
+**Live power draw (watts)** is exposed on the Thermostat as Eve Systems' de facto `Current Consumption` custom characteristic — classic HomeKit (HAP) has no watts/kWh characteristic at all, and Apple's own Home Energy tab reads Matter, not HAP, so there's no path to either the stock Home app or its Energy tab for this. It's included for the free [Eve app](https://apps.apple.com/app/eve-for-homekit/id917695792) instead, which recognizes this UUID and will show it as live wattage with a history graph. Apple's own Home app will simply ignore it, which is expected — it doesn't render characteristics it doesn't recognize.
+
 ### Optional SAM001W sensor
 
 If a Harvia SAM001W WiFi sensor is paired to your MyHarvia 2 account, it's auto-detected as a separate device and exposed as its own pair of accessories (toggle with `enableExternalSensor`, default on):

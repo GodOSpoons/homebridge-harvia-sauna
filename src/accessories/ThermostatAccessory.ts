@@ -1,11 +1,13 @@
 import { HarviaDevice, DeviceStateSubscriber } from '../HarviaDevice';
 import { PlatformAccessory, Logger, CharacteristicValue, API, HAP } from 'homebridge';
-import type { Service } from 'homebridge';
+import type { Service, Characteristic as CharacteristicBase } from 'homebridge';
 import { runHarviaCommand } from './commandError';
+import { createCurrentConsumptionCharacteristic } from './eveCharacteristics';
 
 export class ThermostatAccessory implements DeviceStateSubscriber {
   private readonly service: Service;
   private readonly Characteristic: HAP['Characteristic'];
+  private readonly currentConsumption: CharacteristicBase;
 
   constructor(
     private readonly log: Logger,
@@ -59,6 +61,18 @@ export class ThermostatAccessory implements DeviceStateSubscriber {
       .getCharacteristic(Characteristic.RemainingDuration)
       .setProps({ minValue: 0, maxValue: 7200 })
       .onGet(() => this.device.remainingTime);
+
+    // Real-time heater wattage. Classic HAP has no watts characteristic at
+    // all (Apple's Home Energy tab reads Matter, not HAP, so there's no
+    // native path there either) — this is Eve Systems' de facto custom
+    // characteristic, widely reused across Homebridge plugins. Apple's own
+    // Home app won't show it (it ignores characteristics it doesn't
+    // recognize); the free Eve app will, as live wattage with a history
+    // graph.
+    const CurrentConsumption = createCurrentConsumptionCharacteristic(this.hbApi.hap);
+    this.currentConsumption = this.service.getCharacteristic(CurrentConsumption);
+    this.currentConsumption.onGet(() => this.device.heaterPower);
+
     this.device.subscribe(this);
   }
 
@@ -93,5 +107,6 @@ export class ThermostatAccessory implements DeviceStateSubscriber {
       this.Characteristic.RemainingDuration,
       this.device.remainingTime
     );
+    this.currentConsumption.updateValue(this.device.heaterPower);
   }
 }

@@ -22,6 +22,7 @@ export class HarviaDevice {
   public humidity = 0;
   public remainingTime = 0;
   public panelTemp = 0;
+  public heaterPower = 0;
   public doorOpen: boolean | null = null;
 
   public lastUpdate: Date | null = null;
@@ -67,6 +68,7 @@ export class HarviaDevice {
     if ('humidity' in data) this.humidity = Number(data.humidity);
     if ('remainingTime' in data) this.remainingTime = Number(data.remainingTime);
     if ('panelTemp' in data) this.panelTemp = Number(data.panelTemp);
+    if ('heaterPower' in data) this.heaterPower = Number(data.heaterPower);
     if ('doorOpen' in data) this.doorOpen = Boolean(data.doorOpen);
     this.lastUpdate = new Date();
     this.notifySubscribers();
