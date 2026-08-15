@@ -4,6 +4,7 @@
   "singular": true,
   "schema": {
     "type": "object",
+    "required": ["username", "password"],
     "properties": {
       "name": {
         "title": "Name",
@@ -13,13 +14,11 @@
       "username": {
         "title": "MyHarvia 2 Username (Email)",
         "type": "string",
-        "format": "email",
-        "required": true
+        "format": "email"
       },
       "password": {
         "title": "MyHarvia 2 Password",
-        "type": "string",
-        "required": true
+        "type": "string"
       },
       "pollingInterval": {
         "title": "Polling Interval (seconds)",

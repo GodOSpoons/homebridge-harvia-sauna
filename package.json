@@ -1,6 +1,6 @@
 {
   "name": "homebridge-harvia-sauna",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Homebridge plugin for Harvia Fenix sauna control panels via the harvia.io cloud API",
   "license": "MIT",
   "main": "dist/index.js",
@@ -17,6 +17,7 @@
   },
   "keywords": [
     "homebridge-plugin",
+    "supports-hap",
     "harvia",
     "sauna",
     "homekit"
@@ -46,8 +47,5 @@
     "@types/ws": "^8.5.10",
     "homebridge": "^2.2.1",
     "typescript": "^5.4.5"
-  },
-  "peerDependencies": {
-    "homebridge": "^1.8.0 || ^2.0.0"
   }
 }
