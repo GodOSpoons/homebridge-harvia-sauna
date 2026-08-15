@@ -4,6 +4,12 @@
   "description": "Homebridge plugin for Harvia Fenix sauna control panels via the harvia.io cloud API",
   "license": "MIT",
   "main": "dist/index.js",
+  "files": [
+    "dist",
+    "config.schema.json",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
