@@ -106,11 +106,9 @@ All others can be toggled via the Homebridge UI settings or `config.json`.
 
 The Thermostat's `CurrentHeaterCoolerState` distinguishes IDLE (powered on, holding temperature) from HEATING (actively heating) using the panel's real-time `heatOn` telemetry.
 
-The Thermostat also exposes `RemainingDuration` (session time remaining) — it's not a standard `HeaterCooler` characteristic so HAP logs a one-time "not in required or optional section, adding anyway" warning on first use, which is expected. It shows as an extra row in the accessory's detail sheet rather than on the main tile. The API's unit for this value isn't confirmed (sibling fields like `maxOnTime` and profile `duration` are in minutes), so it's currently passed through raw — if it displays as 60x too small/large during an active session, compare it against the MyHarvia 2 app's own countdown and flag it.
-
 **Panel Temperature** is the control panel's own ambient reading (distinct from the sauna air temperature on the Thermostat, and from a paired SAM001W if you have one) — a second real data point for cross-checking.
 
-**Live power draw (watts)** is exposed on the Thermostat as Eve Systems' de facto `Current Consumption` custom characteristic — classic HomeKit (HAP) has no watts/kWh characteristic at all, and Apple's own Home Energy tab reads Matter, not HAP, so there's no path to either the stock Home app or its Energy tab for this. It's included for the free [Eve app](https://apps.apple.com/app/eve-for-homekit/id917695792) instead, which recognizes this UUID and will show it as live wattage with a history graph. Apple's own Home app will simply ignore it, which is expected — it doesn't render characteristics it doesn't recognize.
+`RemainingDuration` and Eve's `Current Consumption` custom characteristic were briefly added directly to the Thermostat's `HeaterCooler` service but **reverted** — both are non-standard for that service type, and adding them caused the Home app to flag the *entire* service as failing reads/writes (Power and current temperature included), not just the two new characteristics. `HarviaDevice` still tracks `remainingTime`/`heaterPower` internally; if these get revisited, they'd need to live on a separate, non-critical accessory rather than the main control service.
 
 ### Optional SAM001W sensor
 
