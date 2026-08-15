@@ -53,6 +53,19 @@ export class HarviaDevice {
     if (!data || typeof data !== 'object') return;
     if ('displayName' in data && typeof data.displayName === 'string' && data.displayName) {
       this.name = data.displayName;
+    } else if (
+      this.name === this.id &&
+      'type' in data &&
+      typeof data.type === 'string' &&
+      data.type
+    ) {
+      // No displayName has ever shown up for this device — confirmed on a
+      // real SAM001W-type satellite sensor, whose /devices list entry and
+      // (apparently) /devices/state both lack any name field at all.
+      // Telemetry's own 'type' (e.g. "SaunaSensor", vs "Fenix" for the
+      // heater) is real, always-available data — a much more readable
+      // fallback than the raw deviceId UUID.
+      this.name = `${data.type} ${this.id.slice(0, 8)}`;
     }
     if ('active' in data) this.active = Boolean(data.active);
     if ('heatOn' in data) this.heatOn = Boolean(data.heatOn);
