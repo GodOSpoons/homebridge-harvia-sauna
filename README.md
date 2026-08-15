@@ -123,6 +123,8 @@ If a Harvia SAM001W WiFi sensor is paired to your MyHarvia 2 account, it's auto-
 
 The SAM001W pairs to harvia.io as its own device (separate `deviceId` from the sauna's heater), so the plugin classifies each discovered device at startup: one reporting heater-control fields (`active`, `targetTemp`, etc.) becomes the full sauna accessory set above; one reporting only temperature/humidity telemetry becomes a sensor-only device. There's no documented `type` field to key off of, so this is inferred from what each device actually reports — see `src/api/normalize.ts` (`isHeaterStatePayload`) if a device is ever misclassified.
 
+Note that the sensor does not connect to WiFi and broadcast data until the ambient temperature exceeds 40C, shutting off after going below. The sensor will often show the last reading before dormancy, persisting well after the session. Am actively considering options for what to do about these stale readings. 
+
 **Comparing the SAM001W's reading against the sauna's own temperature on the main Home tab:** the Home app automatically groups all Temperature/Humidity sensors in a room into a "Climate" section — this is Apple's own room-view behavior and isn't something a HomeKit accessory can override. To get both readings next to each other at the top level: make sure both accessories are assigned to the same Room, then long-press each tile → accessory settings → **Include in Favorites**. Favorites are a per-user setting stored in your Home data, not something this plugin can set for you.
 
 ---
