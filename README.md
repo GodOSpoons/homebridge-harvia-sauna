@@ -1,7 +1,9 @@
 # Homebridge-Harvia-Sauna
 
 > **v0.9.1 — first public beta.** Core functionality (Thermostat, Power, Light, Fan, Steamer, Door Sensor, Panel Temperature, optional SAM001W sensor) has been validated against real Fenix hardware, but the API surface is unofficial and edge cases across firmware/hardware generations are still being ironed out. Please [open an issue](https://github.com/GodOSpoons/homebridge-harvia-sauna/issues) if something doesn't work as expected.
-
+> 
+[![verified-by-homebridge](https://img.shields.io/badge/homebridge-verified-blueviolet?color=%23491F59&style=for-the-badge&logoColor=%23FFFFFF&logo=homebridge)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+> 
 Homebridge plugin for Harvia **Fenix** sauna control panels via the `harvia.io` (MyHarvia 2) cloud API.
 
 Originally forked from a Homebridge plugin built for the older Xenio WiFi controller, then rewritten from the ground up by [GodOSpoons](https://github.com/GodOSpoons) to target Fenix panels on the harvia.io/MyHarvia 2 backend — a different API entirely (REST bearer-token auth and REST reads/writes, vs. the original's Cognito SRP auth and AppSync GraphQL mutations) — plus Homebridge 2.0 compatibility and auto-detected SAM001W sensor support, validated against real hardware.
